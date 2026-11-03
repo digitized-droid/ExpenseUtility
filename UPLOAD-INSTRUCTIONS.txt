@@ -1,0 +1,24 @@
+PESOPLAN — GITHUB PAGES OFFLINE UPDATE
+
+FILES IN THIS FOLDER
+- index.html: the latest PesoPlan HTML you supplied, renamed for GitHub Pages.
+- service-worker.js: offline app-shell caching for the /Expenses/ GitHub Pages path.
+- manifest.webmanifest: your existing PWA manifest.
+- supabase-config.js: your existing browser-safe Supabase URL and publishable key.
+
+UPLOAD STEPS
+1. Make a backup first: in your GitHub repository, download the current repository ZIP, and export a PesoPlan data backup from the app if that feature is available.
+2. Open https://github.com/digitized-droid/Expenses
+3. Click Add file > Upload files.
+4. Upload/replace the four files above at the REPOSITORY ROOT (same level as the current index.html). Do not upload the containing folder as a nested folder.
+5. Keep your existing icons/ folder and its icon-192.png and icon-512.png files. Do not delete it.
+6. Commit the changes to the main branch.
+7. Wait for GitHub Pages to finish deploying. Open https://digitized-droid.github.io/Expenses/ while online, wait for the page to finish loading, then close and reopen it once.
+8. Test offline by enabling airplane mode and opening the installed app. The first successful online visit is required to install/cache the offline shell.
+
+IMPORTANT LIMITATIONS
+- This package enables the app shell to load offline and the existing app saves edits to this device's localStorage.
+- It does NOT yet fix the cloud-sync conflict bug. The current app uploads one whole JSON document and can replace local state with cloud state. Do not use two devices to edit the same account until conflict-safe merge is implemented and tested.
+- The Supabase JavaScript library is loaded from jsDelivr. The tracker itself should still open offline because cloud initialization is optional, but cloud sign-in/sync requires internet.
+- Browser storage is device/browser-specific. Clearing app/site data or uninstalling the app may erase local-only edits. Export backups regularly.
+- If you already installed an older APK, the APK wrapper may retain an old WebView/cache. Test the GitHub Pages URL in Chrome first. If it works there but not in the APK, rebuild/update the APK in FreeWebToAPK using the same URL.
