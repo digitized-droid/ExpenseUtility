@@ -790,10 +790,10 @@ td strong { font-size:11px; }
       const saved = JSON.parse(localStorage.getItem(KEY));
       if (saved && saved.balances && Array.isArray(saved.transactions) && Array.isArray(saved.wishes)) {
         if (Array.isArray(saved.categories) && saved.categories.length) CATEGORIES = saved.categories.map(c => ({...c}));
-        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:saved.transactions, wishes:saved.wishes, bills:Array.isArray(saved.bills)?saved.bills:[], paidBills:Array.isArray(saved.paidBills)?saved.paidBills:[], reminderGroups:Array.isArray(saved.reminderGroups)&&saved.reminderGroups.length?saved.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g}))};
+        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:saved.transactions, wishes:saved.wishes, bills:Array.isArray(saved.bills)?saved.bills:[], paidBills:Array.isArray(saved.paidBills)?saved.paidBills:[], reminderGroups:Array.isArray(saved.reminderGroups)&&saved.reminderGroups.length?saved.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[]};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g}))};
+    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -873,33 +873,58 @@ td strong { font-size:11px; }
 
   function mergeCloudStates(localState, remoteState) {
     const remote = remoteState || null;
-    const remoteTransactions = Array.isArray(remote?.transactions) ? remote.transactions : [];
     const localTransactions = Array.isArray(localState?.transactions) ? localState.transactions : [];
-    const remoteIds = new Set(remoteTransactions.map(t => String(t.id)));
-    const localOnly = localTransactions.filter(t => t && t.id != null && !remoteIds.has(String(t.id)));
+    const remoteTransactions = Array.isArray(remote?.transactions) ? remote.transactions : [];
+    // A deletion marker prevents another device's older copy from resurrecting a deleted transaction.
+    const deletedIds = new Set([
+      ...(Array.isArray(remote?.deletedTransactionIds) ? remote.deletedTransactionIds : []),
+      ...(Array.isArray(localState?.deletedTransactionIds) ? localState.deletedTransactionIds : [])
+    ].map(String));
     const byId = new Map();
-    remoteTransactions.forEach(t => { if (t && t.id != null) byId.set(String(t.id), t); });
+    remoteTransactions.forEach(t => { if (t && t.id != null && !deletedIds.has(String(t.id))) byId.set(String(t.id), t); });
+    const localOnly = localTransactions.filter(t => t && t.id != null &&
+      !deletedIds.has(String(t.id)) && !byId.has(String(t.id)));
     localOnly.forEach(t => byId.set(String(t.id), t));
 
-    // Do not add two devices' full balances. Start with cloud balances and apply
-    // only transactions that exist locally but have not reached the cloud.
     const baseCategories = Array.isArray(remote?.categories) && remote.categories.length
       ? remote.categories.map(c => ({...c}))
       : (Array.isArray(localState?.categories) && localState.categories.length
           ? localState.categories.map(c => ({...c})) : CATEGORIES.map(c => ({...c})));
     const balances = {...blankBalances(), ...(remote?.balances || localState?.balances || {})};
+    // Reverse the cloud-side balance effect for transactions deleted offline.
+    if (remote) remoteTransactions
+      .filter(t => t && t.id != null && deletedIds.has(String(t.id)))
+      .forEach(tx => transactionBalanceEffect(balances, tx, 'remove', baseCategories));
     if (remote) localOnly.forEach(tx => transactionBalanceEffect(balances, tx, 'add', baseCategories));
+
+    // Merge reminders by stable ID so offline additions are retained when the cloud is reachable.
+    // Cloud versions win when the same reminder exists on both devices.
+    const mergeRecords = (localItems, remoteItems) => {
+      const merged = new Map();
+      (Array.isArray(localItems) ? localItems : []).forEach(item => {
+        if (item && item.id != null) merged.set(String(item.id), item);
+      });
+      (Array.isArray(remoteItems) ? remoteItems : []).forEach(item => {
+        if (item && item.id != null) merged.set(String(item.id), item);
+      });
+      return [...merged.values()];
+    };
 
     const merged = remote ? {
       ...remote,
       categories: baseCategories,
       balances,
       transactions: [...byId.values()],
+      deletedTransactionIds: [...deletedIds],
       wishes: Array.isArray(remote.wishes) ? remote.wishes : (localState.wishes || []),
-      bills: Array.isArray(remote.bills) ? remote.bills : [],
-      paidBills: Array.isArray(remote.paidBills) ? remote.paidBills : [],
-      reminderGroups: Array.isArray(remote.reminderGroups) ? remote.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))
-    } : {...localState, transactions:[...byId.values()]};
+      bills: mergeRecords(localState?.bills, remote.bills),
+      paidBills: mergeRecords(localState?.paidBills, remote.paidBills),
+      reminderGroups: mergeRecords(localState?.reminderGroups, remote.reminderGroups)
+    } : {
+      ...localState,
+      transactions: [...byId.values()],
+      deletedTransactionIds: [...deletedIds]
+    };
     return {state: merged, added: localOnly.length};
   }
 
@@ -973,7 +998,8 @@ td strong { font-size:11px; }
       transactions: remoteState.transactions,
       wishes: remoteState.wishes,
       bills: Array.isArray(remoteState.bills) ? remoteState.bills : [],
-      paidBills: Array.isArray(remoteState.paidBills) ? remoteState.paidBills : []
+      paidBills: Array.isArray(remoteState.paidBills) ? remoteState.paidBills : [],
+      deletedTransactionIds: Array.isArray(remoteState.deletedTransactionIds) ? remoteState.deletedTransactionIds : []
     };
     try { state.categories = CATEGORIES;
       localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
@@ -1011,9 +1037,28 @@ td strong { font-size:11px; }
   }
 
   async function activateCloudSession(session) {
-    cloudUser = session?.user || null;
+    const nextUser = session?.user || null;
     clearInterval(cloudPollTimer);
     clearTimeout(cloudSyncTimer);
+    // Never carry the previous account's browser data into another account.
+    if (nextUser) {
+      const ownerKey = KEY + '_owner';
+      const previousOwner = localStorage.getItem(ownerKey);
+      if (previousOwner !== nextUser.id) {
+        // Remove every prior PesoPlan browser-data key before loading this account.
+        try {
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(KEY)) localStorage.removeItem(key);
+          }
+        } catch (e) {}
+        CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
+        state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
+          reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
+      }
+      try { localStorage.setItem(ownerKey, nextUser.id); } catch (e) {}
+    }
+    cloudUser = nextUser;
     updateCloudAccountUI();
     if (!cloudUser) {
       lastCloudUpdatedAt = null;
@@ -1113,8 +1158,20 @@ td strong { font-size:11px; }
     else {
       cloudUser = null;
       clearInterval(cloudPollTimer);
+      clearTimeout(cloudSyncTimer);
+      // Clear only this browser's active copy. The signed-in user's cloud backup is untouched.
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith(KEY)) localStorage.removeItem(key);
+        }
+      } catch (e) {}
+      CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
+      state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
+        reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
+      render();
       updateCloudAccountUI();
-      setCloudStatus('● Signed out · local data remains on this device');
+      setCloudStatus('● Signed out · this device is cleared');
     }
   });
 
@@ -1746,8 +1803,9 @@ td strong { font-size:11px; }
       const t = state.transactions.find(x => x.id === delT.dataset.deleteTransaction); if (!t) return;
       const promptText = t.type === 'income' ? 'Delete this income? Its distributed amount will be removed from all categories.' : 'Delete this expense? Its amount will be returned to the category.';
       if (!confirm(promptText)) return;
-      if (t.type === 'income') CATEGORIES.forEach(c => state.balances[c.id] -= t.amount*c.percent/100);
-      else state.balances[t.category] += t.amount;
+      transactionBalanceEffect(state.balances, t, 'remove', CATEGORIES);
+      state.deletedTransactionIds = Array.isArray(state.deletedTransactionIds) ? state.deletedTransactionIds : [];
+      if (!state.deletedTransactionIds.includes(String(t.id))) state.deletedTransactionIds.push(String(t.id));
       if (t.wishId) { const linkedWish = state.wishes.find(w => w.id === t.wishId); if (linkedWish) { linkedWish.done = false; linkedWish.purchaseTransactionId = null; linkedWish.purchasedAt = null; } }
       if (t.billPaymentId) {
         state.paidBills = (state.paidBills || []).filter(b => b.transactionId !== t.id && b.id !== t.billPaymentId);
