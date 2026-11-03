@@ -790,10 +790,15 @@ td strong { font-size:11px; }
       const saved = JSON.parse(localStorage.getItem(KEY));
       if (saved && saved.balances && Array.isArray(saved.transactions) && Array.isArray(saved.wishes)) {
         if (Array.isArray(saved.categories) && saved.categories.length) CATEGORIES = saved.categories.map(c => ({...c}));
-        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:saved.transactions, wishes:saved.wishes, bills:Array.isArray(saved.bills)?saved.bills:[], paidBills:Array.isArray(saved.paidBills)?saved.paidBills:[], reminderGroups:Array.isArray(saved.reminderGroups)&&saved.reminderGroups.length?saved.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[]};
+        const migratedAt = Date.now();
+        const syncMeta = saved._syncMeta || {};
+        if (!syncMeta.categoriesAt && JSON.stringify(CATEGORIES) !== JSON.stringify(DEFAULT_CATEGORIES)) syncMeta.categoriesAt = migratedAt;
+        const migrateRecords = items => (Array.isArray(items) ? items : []).map(item =>
+          item && item.id != null && !item.updatedAt ? {...item, updatedAt:migratedAt} : item);
+        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[]};
+    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -803,6 +808,7 @@ td strong { font-size:11px; }
   let cloudPollTimer = null;
   let lastCloudUpdatedAt = null;
   let cloudBusy = false;
+  let cloudSaveRequested = false;
 
   const cloudModal = document.getElementById('cloudModal');
   const cloudModalStatus = document.getElementById('cloudModalStatus');
@@ -873,63 +879,88 @@ td strong { font-size:11px; }
 
   function mergeCloudStates(localState, remoteState) {
     const remote = remoteState || null;
-    const localTransactions = Array.isArray(localState?.transactions) ? localState.transactions : [];
+    const local = localState || {};
+    const ids = key => new Set([
+      ...(Array.isArray(remote?.[key]) ? remote[key] : []),
+      ...(Array.isArray(local?.[key]) ? local[key] : [])
+    ].map(String));
+
+    const deletedTransactionIds = ids('deletedTransactionIds');
+    const deletedBillIds = ids('deletedBillIds');
+    const deletedWishIds = ids('deletedWishIds');
+    const deletedReminderGroupIds = ids('deletedReminderGroupIds');
+    const deletedPaidBillIds = ids('deletedPaidBillIds');
+    const deletedCategoryIds = ids('deletedCategoryIds');
+
+    const localTransactions = Array.isArray(local.transactions) ? local.transactions : [];
     const remoteTransactions = Array.isArray(remote?.transactions) ? remote.transactions : [];
-    // A deletion marker prevents another device's older copy from resurrecting a deleted transaction.
-    const deletedIds = new Set([
-      ...(Array.isArray(remote?.deletedTransactionIds) ? remote.deletedTransactionIds : []),
-      ...(Array.isArray(localState?.deletedTransactionIds) ? localState.deletedTransactionIds : [])
-    ].map(String));
-    const deletedBillIds = new Set([
-      ...(Array.isArray(remote?.deletedBillIds) ? remote.deletedBillIds : []),
-      ...(Array.isArray(localState?.deletedBillIds) ? localState.deletedBillIds : [])
-    ].map(String));
-    const byId = new Map();
-    remoteTransactions.forEach(t => { if (t && t.id != null && !deletedIds.has(String(t.id))) byId.set(String(t.id), t); });
-    const localOnly = localTransactions.filter(t => t && t.id != null &&
-      !deletedIds.has(String(t.id)) && !byId.has(String(t.id)));
-    localOnly.forEach(t => byId.set(String(t.id), t));
-
-    const baseCategories = Array.isArray(remote?.categories) && remote.categories.length
-      ? remote.categories.map(c => ({...c}))
-      : (Array.isArray(localState?.categories) && localState.categories.length
-          ? localState.categories.map(c => ({...c})) : CATEGORIES.map(c => ({...c})));
-    const balances = {...blankBalances(), ...(remote?.balances || localState?.balances || {})};
-    // Reverse the cloud-side balance effect for transactions deleted offline.
-    if (remote) remoteTransactions
-      .filter(t => t && t.id != null && deletedIds.has(String(t.id)))
-      .forEach(tx => transactionBalanceEffect(balances, tx, 'remove', baseCategories));
-    if (remote) localOnly.forEach(tx => transactionBalanceEffect(balances, tx, 'add', baseCategories));
-
-    // Merge reminders by stable ID so offline additions are retained when the cloud is reachable.
-    // Cloud versions win when the same reminder exists on both devices.
-    const mergeRecords = (localItems, remoteItems) => {
-      const merged = new Map();
-      (Array.isArray(localItems) ? localItems : []).forEach(item => {
-        if (item && item.id != null) merged.set(String(item.id), item);
-      });
+    const transactionMap = new Map();
+    const mergeByUpdatedAt = (localItems, remoteItems) => {
+      const map = new Map();
       (Array.isArray(remoteItems) ? remoteItems : []).forEach(item => {
-        if (item && item.id != null) merged.set(String(item.id), item);
+        if (item && item.id != null) map.set(String(item.id), item);
       });
-      return [...merged.values()];
+      (Array.isArray(localItems) ? localItems : []).forEach(item => {
+        if (!item || item.id == null) return;
+        const key = String(item.id), existing = map.get(key);
+        if (!existing || Number(item.updatedAt || item.createdAt || 0) > Number(existing.updatedAt || existing.createdAt || 0)) {
+          map.set(key, item);
+        }
+      });
+      return [...map.values()];
     };
+
+    remoteTransactions.forEach(t => {
+      if (t && t.id != null && !deletedTransactionIds.has(String(t.id))) transactionMap.set(String(t.id), t);
+    });
+    const localOnly = localTransactions.filter(t => t && t.id != null &&
+      !deletedTransactionIds.has(String(t.id)) && !transactionMap.has(String(t.id)));
+    localOnly.forEach(t => transactionMap.set(String(t.id), t));
+
+    const localMeta = local._syncMeta || {}, remoteMeta = remote?._syncMeta || {};
+    const localCategoriesAt = Number(localMeta.categoriesAt || 0);
+    const remoteCategoriesAt = Number(remoteMeta.categoriesAt || 0);
+    const categoriesSource = !remote || localCategoriesAt > remoteCategoriesAt ? local.categories : remote.categories;
+    const baseCategories = (Array.isArray(categoriesSource) && categoriesSource.length
+      ? categoriesSource : (Array.isArray(local.categories) && local.categories.length ? local.categories : CATEGORIES))
+      .filter(c => c && c.id != null && !deletedCategoryIds.has(String(c.id))).map(c => ({...c}));
+    const balances = {...blankBalances(), ...(remote?.balances || local.balances || {})};
+
+    // Reconcile balances using transaction IDs, not by adding two complete balance snapshots.
+    if (remote) {
+      remoteTransactions.filter(t => t && t.id != null && deletedTransactionIds.has(String(t.id)))
+        .forEach(tx => transactionBalanceEffect(balances, tx, 'remove', baseCategories));
+      localOnly.forEach(tx => transactionBalanceEffect(balances, tx, 'add', baseCategories));
+    }
 
     const merged = remote ? {
       ...remote,
       categories: baseCategories,
       balances,
-      transactions: [...byId.values()],
-      deletedTransactionIds: [...deletedIds],
+      transactions: [...transactionMap.values()],
+      wishes: mergeByUpdatedAt(local.wishes, remote.wishes).filter(x => !deletedWishIds.has(String(x.id))),
+      bills: mergeByUpdatedAt(local.bills, remote.bills).filter(x => !deletedBillIds.has(String(x.id))),
+      paidBills: mergeByUpdatedAt(local.paidBills, remote.paidBills).filter(x => !deletedPaidBillIds.has(String(x.id))),
+      reminderGroups: mergeByUpdatedAt(local.reminderGroups, remote.reminderGroups).filter(x => !deletedReminderGroupIds.has(String(x.id))),
+      deletedTransactionIds: [...deletedTransactionIds],
       deletedBillIds: [...deletedBillIds],
-      wishes: Array.isArray(remote.wishes) ? remote.wishes : (localState.wishes || []),
-      bills: mergeRecords(localState?.bills, remote.bills)
-        .filter(b => b && b.id != null && !deletedBillIds.has(String(b.id))),
-      paidBills: mergeRecords(localState?.paidBills, remote.paidBills),
-      reminderGroups: mergeRecords(localState?.reminderGroups, remote.reminderGroups)
+      deletedWishIds: [...deletedWishIds],
+      deletedReminderGroupIds: [...deletedReminderGroupIds],
+      deletedPaidBillIds: [...deletedPaidBillIds],
+      deletedCategoryIds: [...deletedCategoryIds],
+      _syncMeta: {
+        categoriesAt: Math.max(localCategoriesAt, remoteCategoriesAt),
+        stateAt: Math.max(Number(localMeta.stateAt || 0), Number(remoteMeta.stateAt || 0))
+      }
     } : {
-      ...localState,
-      transactions: [...byId.values()],
-      deletedTransactionIds: [...deletedIds]
+      ...local,
+      transactions: [...transactionMap.values()],
+      deletedTransactionIds: [...deletedTransactionIds],
+      deletedBillIds: [...deletedBillIds],
+      deletedWishIds: [...deletedWishIds],
+      deletedReminderGroupIds: [...deletedReminderGroupIds],
+      deletedPaidBillIds: [...deletedPaidBillIds],
+      deletedCategoryIds: [...deletedCategoryIds]
     };
     return {state: merged, added: localOnly.length};
   }
@@ -945,7 +976,8 @@ td strong { font-size:11px; }
   }
 
   async function pushCloudData() {
-    if (!cloudClient || !cloudUser || cloudBusy || !navigator.onLine) return;
+    if (!cloudClient || !cloudUser || !navigator.onLine) return;
+    if (cloudBusy) { cloudSaveRequested = true; return; }
     cloudBusy = true;
     const startingSnapshot = JSON.stringify(state);
     try {
@@ -972,8 +1004,9 @@ td strong { font-size:11px; }
         applyCloudState(mergedState);
       } else {
         const concurrentMerge = mergeCloudStates(state, mergedState);
+        const concurrentChangesRemain = JSON.stringify(concurrentMerge.state) !== JSON.stringify(mergedState);
         applyCloudState(concurrentMerge.state);
-        if (concurrentMerge.added) queueCloudSave();
+        if (concurrentChangesRemain) queueCloudSave();
       }
       setCloudStatus('● Synced to cloud' + (merge.added ? ` · ${merge.added} offline transaction${merge.added===1?'':'s'} merged` : ''));
     } catch (error) {
@@ -981,6 +1014,11 @@ td strong { font-size:11px; }
       setCloudStatus('● Saved on this device · cloud sync pending');
     } finally {
       cloudBusy = false;
+      if (cloudSaveRequested && cloudUser && navigator.onLine) {
+        cloudSaveRequested = false;
+        clearTimeout(cloudSyncTimer);
+        cloudSyncTimer = setTimeout(pushCloudData, 250);
+      }
     }
   }
 
@@ -1006,10 +1044,17 @@ td strong { font-size:11px; }
       bills: Array.isArray(remoteState.bills) ? remoteState.bills : [],
       paidBills: Array.isArray(remoteState.paidBills) ? remoteState.paidBills : [],
       deletedTransactionIds: Array.isArray(remoteState.deletedTransactionIds) ? remoteState.deletedTransactionIds : [],
-      deletedBillIds: Array.isArray(remoteState.deletedBillIds) ? remoteState.deletedBillIds : []
+      deletedBillIds: Array.isArray(remoteState.deletedBillIds) ? remoteState.deletedBillIds : [],
+      deletedWishIds: Array.isArray(remoteState.deletedWishIds) ? remoteState.deletedWishIds : [],
+      deletedReminderGroupIds: Array.isArray(remoteState.deletedReminderGroupIds) ? remoteState.deletedReminderGroupIds : [],
+      deletedPaidBillIds: Array.isArray(remoteState.deletedPaidBillIds) ? remoteState.deletedPaidBillIds : [],
+      deletedCategoryIds: Array.isArray(remoteState.deletedCategoryIds) ? remoteState.deletedCategoryIds : [],
+      _syncMeta: remoteState._syncMeta || {}
     };
     try { state.categories = CATEGORIES;
-      localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+      localStorage.setItem(KEY, JSON.stringify(state));
+      lastSavedSnapshot = JSON.stringify(state);
+    } catch (e) {}
     render();
     return true;
   }
@@ -1021,12 +1066,11 @@ td strong { font-size:11px; }
       const record = await fetchCloudRecord();
       if (record?.data && record.updated_at !== lastCloudUpdatedAt) {
         const merge = mergeCloudStates(state, record.data);
+        const mergedDiffersFromCloud = JSON.stringify(merge.state) !== JSON.stringify(record.data);
         if (applyCloudState(merge.state)) {
           lastCloudUpdatedAt = record.updated_at;
-          if (merge.added) {
-            setCloudStatus(`● Merging ${merge.added} offline transaction${merge.added===1?'':'s'}…`);
-            // Upload the union after applying it locally; failed uploads leave
-            // the merged records safely stored in localStorage for retry.
+          if (mergedDiffersFromCloud) {
+            setCloudStatus('● Merging offline changes…');
             setTimeout(pushCloudData, 0);
           } else {
             setCloudStatus('● Updated from cloud');
@@ -1061,7 +1105,7 @@ td strong { font-size:11px; }
         } catch (e) {}
         CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
         state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
-          reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
+          reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
       }
       try { localStorage.setItem(ownerKey, nextUser.id); } catch (e) {}
     }
@@ -1077,8 +1121,10 @@ td strong { font-size:11px; }
     try {
       const record = await fetchCloudRecord();
       if (record) {
-        const localHasData = state.transactions.length > 0 ||
-          state.wishes.length > 0 ||
+        const localHasData = state.transactions.length > 0 || state.wishes.length > 0 ||
+          (state.bills || []).length > 0 || (state.paidBills || []).length > 0 ||
+          (state.reminderGroups || []).length > 0 ||
+          (state.categories || []).length > 0 ||
           Object.values(state.balances).some(value => Number(value) !== 0);
         if (localHasData) {
           try { localStorage.setItem(KEY + '_before_cloud_login', JSON.stringify(state)); } catch (e) {}
@@ -1175,7 +1221,7 @@ td strong { font-size:11px; }
       } catch (e) {}
       CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
       state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
-        reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
+        reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
       render();
       updateCloudAccountUI();
       setCloudStatus('● Signed out · this device is cleared');
@@ -1186,14 +1232,50 @@ td strong { font-size:11px; }
   window.addEventListener('online', () => { if (cloudUser && cloudClient) { setCloudStatus('● Online · syncing saved changes…'); pushCloudData(); } });
   window.addEventListener('offline', () => setCloudStatus('● Offline · saved on this device; cloud sync will resume when online'));
 
+  let lastSavedSnapshot = JSON.stringify(state);
   function save() {
     try {
+      const previous = (() => { try { return JSON.parse(lastSavedSnapshot || '{}'); } catch (_) { return {}; } })();
+      const now = Date.now();
       state.categories = CATEGORIES;
       state.reminderGroups = state.reminderGroups || DEFAULT_REMINDER_GROUPS.map(g=>({...g}));
-      localStorage.setItem(KEY, JSON.stringify(state));
+      state._syncMeta = state._syncMeta || {};
+      const categoryChanged = JSON.stringify(previous.categories || []) !== JSON.stringify(CATEGORIES);
+      if (categoryChanged) state._syncMeta.categoriesAt = Math.max(now, Number(state._syncMeta.categoriesAt || 0) + 1);
+
+      const stampChanged = (key) => {
+        const before = new Map((Array.isArray(previous[key]) ? previous[key] : []).filter(x=>x && x.id!=null).map(x=>[String(x.id), JSON.stringify(x)]));
+        const current = Array.isArray(state[key]) ? state[key] : [];
+        current.forEach(item => {
+          if (!item || item.id == null) return;
+          if (before.get(String(item.id)) !== JSON.stringify(item)) item.updatedAt = Math.max(now, Number(item.updatedAt || 0) + 1);
+        });
+      };
+      ['transactions','wishes','bills','paidBills','reminderGroups'].forEach(stampChanged);
+
+      const trackDeleted = (key, tombstoneKey) => {
+        const currentIds = new Set((Array.isArray(state[key]) ? state[key] : []).filter(x=>x && x.id!=null).map(x=>String(x.id)));
+        const removed = (Array.isArray(previous[key]) ? previous[key] : []).filter(x=>x && x.id!=null && !currentIds.has(String(x.id)));
+        state[tombstoneKey] = Array.isArray(state[tombstoneKey]) ? state[tombstoneKey] : [];
+        removed.forEach(x => { if (!state[tombstoneKey].includes(String(x.id))) state[tombstoneKey].push(String(x.id)); });
+      };
+      trackDeleted('wishes','deletedWishIds');
+      trackDeleted('bills','deletedBillIds');
+      trackDeleted('paidBills','deletedPaidBillIds');
+      trackDeleted('reminderGroups','deletedReminderGroupIds');
+      const currentCategoryIds = new Set(CATEGORIES.map(c=>String(c.id)));
+      state.deletedCategoryIds = Array.isArray(state.deletedCategoryIds) ? state.deletedCategoryIds : [];
+      (previous.categories || []).filter(c=>c && c.id!=null && !currentCategoryIds.has(String(c.id)))
+        .forEach(c=>{ if(!state.deletedCategoryIds.includes(String(c.id))) state.deletedCategoryIds.push(String(c.id)); });
+
+      state._syncMeta.stateAt = now;
+      const serialized = JSON.stringify(state);
+      localStorage.setItem(KEY, serialized);
+      lastSavedSnapshot = serialized;
       document.getElementById('saveStatus').textContent = cloudUser ? '● Saved on this device · syncing…' : '● Saved on this device';
       queueCloudSave();
     } catch (error) {
+      console.error('PesoPlan local save:', error);
       document.getElementById('saveStatus').textContent = '● Browser storage unavailable';
       toast('Your browser blocked saving. Please allow site storage or export a backup.');
     }
@@ -1664,7 +1746,7 @@ td strong { font-size:11px; }
     if (!name || CATEGORIES.some(c => c.id === id || c.name.toLowerCase() === name.toLowerCase())) return toast('Enter a unique category name.');
     const percent = Number(document.getElementById('newCategoryPercent').value) || 0;
     CATEGORIES.push({id,name,percent,icon:document.getElementById('newCategoryIcon').value.trim() || '✦'});
-    state.balances[id] = 0; renderCategorySettings(); e.target.reset(); document.getElementById('newCategoryIcon').value='✦';
+    state.balances[id] = 0; save(); render(); renderCategorySettings(); e.target.reset(); document.getElementById('newCategoryIcon').value='✦';
   });
   document.getElementById('categorySettingsRows').addEventListener('click', e => {
     const btn = e.target.closest('[data-delete-category]'); if (!btn) return;
@@ -1855,7 +1937,11 @@ td strong { font-size:11px; }
         } else if (!check.checked && w.done) {
           if (w.purchaseTransactionId) {
             const tx = state.transactions.find(t => t.id === w.purchaseTransactionId);
-            if (tx) state.balances[tx.category] = Number(state.balances[tx.category] || 0) + Number(tx.amount || 0);
+            if (tx) {
+              state.balances[tx.category] = Number(state.balances[tx.category] || 0) + Number(tx.amount || 0);
+              state.deletedTransactionIds = Array.isArray(state.deletedTransactionIds) ? state.deletedTransactionIds : [];
+              if (!state.deletedTransactionIds.includes(String(tx.id))) state.deletedTransactionIds.push(String(tx.id));
+            }
             state.transactions = state.transactions.filter(t => t.id !== w.purchaseTransactionId);
           }
           w.done = false; w.purchasedAt = null; w.purchaseTransactionId = null;
