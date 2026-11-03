@@ -846,22 +846,105 @@ td strong { font-size:11px; }
   }
   function closeCloudModal() { cloudModal.hidden = true; }
 
+  // Transaction-first cloud sync.
+  // The cloud remains canonical; local transactions missing from the cloud are
+  // treated as offline additions and merged by their stable transaction IDs.
+  function transactionBalanceEffect(balances, tx, direction, categories) {
+    const sign = direction === 'add' ? 1 : -1;
+    const amount = Number(tx?.amount || 0) * sign;
+    if (!Number.isFinite(amount) || !tx) return;
+    if (tx.type === 'income') {
+      if (Array.isArray(tx.allocations) && tx.allocations.length) {
+        tx.allocations.forEach(allocation => {
+          if (allocation && allocation.category) {
+            balances[allocation.category] = Number(balances[allocation.category] || 0) + Number(allocation.amount || 0) * sign;
+          }
+        });
+      } else {
+        // Older income records did not save their original category split.
+        (categories || CATEGORIES).forEach(c => {
+          balances[c.id] = Number(balances[c.id] || 0) + amount * Number(c.percent || 0) / 100;
+        });
+      }
+    } else if (tx.type === 'expense' && tx.category) {
+      balances[tx.category] = Number(balances[tx.category] || 0) - amount;
+    }
+  }
+
+  function mergeCloudStates(localState, remoteState) {
+    const remote = remoteState || null;
+    const remoteTransactions = Array.isArray(remote?.transactions) ? remote.transactions : [];
+    const localTransactions = Array.isArray(localState?.transactions) ? localState.transactions : [];
+    const remoteIds = new Set(remoteTransactions.map(t => String(t.id)));
+    const localOnly = localTransactions.filter(t => t && t.id != null && !remoteIds.has(String(t.id)));
+    const byId = new Map();
+    remoteTransactions.forEach(t => { if (t && t.id != null) byId.set(String(t.id), t); });
+    localOnly.forEach(t => byId.set(String(t.id), t));
+
+    // Do not add two devices' full balances. Start with cloud balances and apply
+    // only transactions that exist locally but have not reached the cloud.
+    const baseCategories = Array.isArray(remote?.categories) && remote.categories.length
+      ? remote.categories.map(c => ({...c}))
+      : (Array.isArray(localState?.categories) && localState.categories.length
+          ? localState.categories.map(c => ({...c})) : CATEGORIES.map(c => ({...c})));
+    const balances = {...blankBalances(), ...(remote?.balances || localState?.balances || {})};
+    if (remote) localOnly.forEach(tx => transactionBalanceEffect(balances, tx, 'add', baseCategories));
+
+    const merged = remote ? {
+      ...remote,
+      categories: baseCategories,
+      balances,
+      transactions: [...byId.values()],
+      wishes: Array.isArray(remote.wishes) ? remote.wishes : (localState.wishes || []),
+      bills: Array.isArray(remote.bills) ? remote.bills : [],
+      paidBills: Array.isArray(remote.paidBills) ? remote.paidBills : [],
+      reminderGroups: Array.isArray(remote.reminderGroups) ? remote.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))
+    } : {...localState, transactions:[...byId.values()]};
+    return {state: merged, added: localOnly.length};
+  }
+
+  async function fetchCloudRecord() {
+    const { data, error } = await cloudClient
+      .from('pesoplan_data')
+      .select('data, updated_at')
+      .eq('user_id', cloudUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  }
+
   async function pushCloudData() {
-    if (!cloudClient || !cloudUser || cloudBusy) return;
+    if (!cloudClient || !cloudUser || cloudBusy || !navigator.onLine) return;
     cloudBusy = true;
+    const startingSnapshot = JSON.stringify(state);
     try {
+      // Always read the newest cloud row before writing, preventing a stale
+      // device snapshot from blindly replacing newer cloud transactions.
+      const remoteRecord = await fetchCloudRecord();
+      const localSnapshot = JSON.parse(startingSnapshot);
+      const merge = mergeCloudStates(localSnapshot, remoteRecord?.data || null);
+      const mergedState = merge.state;
       const { data, error } = await cloudClient
         .from('pesoplan_data')
         .upsert({
           user_id: cloudUser.id,
-          data: {...state, categories:CATEGORIES},
+          data: {...mergedState, categories: mergedState.categories || CATEGORIES},
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' })
         .select('updated_at')
         .single();
       if (error) throw error;
       lastCloudUpdatedAt = data?.updated_at || new Date().toISOString();
-      setCloudStatus('● Synced to cloud');
+
+      // Incorporate transactions created while the request was in flight.
+      if (JSON.stringify(state) === startingSnapshot) {
+        applyCloudState(mergedState);
+      } else {
+        const concurrentMerge = mergeCloudStates(state, mergedState);
+        applyCloudState(concurrentMerge.state);
+        if (concurrentMerge.added) queueCloudSave();
+      }
+      setCloudStatus('● Synced to cloud' + (merge.added ? ` · ${merge.added} offline transaction${merge.added===1?'':'s'} merged` : ''));
     } catch (error) {
       console.error('PesoPlan cloud save:', error);
       setCloudStatus('● Saved on this device · cloud sync pending');
@@ -899,18 +982,22 @@ td strong { font-size:11px; }
   }
 
   async function pullCloudData(showMessage = false) {
-    if (!cloudClient || !cloudUser || cloudBusy) return;
+    if (!cloudClient || !cloudUser || cloudBusy || !navigator.onLine) return;
+    cloudBusy = true;
     try {
-      const { data, error } = await cloudClient
-        .from('pesoplan_data')
-        .select('data, updated_at')
-        .eq('user_id', cloudUser.id)
-        .maybeSingle();
-      if (error) throw error;
-      if (data && data.updated_at && data.updated_at !== lastCloudUpdatedAt) {
-        if (applyCloudState(data.data)) {
-          lastCloudUpdatedAt = data.updated_at;
-          setCloudStatus('● Updated from cloud');
+      const record = await fetchCloudRecord();
+      if (record?.data && record.updated_at !== lastCloudUpdatedAt) {
+        const merge = mergeCloudStates(state, record.data);
+        if (applyCloudState(merge.state)) {
+          lastCloudUpdatedAt = record.updated_at;
+          if (merge.added) {
+            setCloudStatus(`● Merging ${merge.added} offline transaction${merge.added===1?'':'s'}…`);
+            // Upload the union after applying it locally; failed uploads leave
+            // the merged records safely stored in localStorage for retry.
+            setTimeout(pushCloudData, 0);
+          } else {
+            setCloudStatus('● Updated from cloud');
+          }
         }
       } else if (showMessage) {
         setCloudStatus('● Cloud data is up to date');
@@ -918,12 +1005,15 @@ td strong { font-size:11px; }
     } catch (error) {
       console.error('PesoPlan cloud load:', error);
       setCloudStatus('● Offline · changes saved on this device');
+    } finally {
+      cloudBusy = false;
     }
   }
 
   async function activateCloudSession(session) {
     cloudUser = session?.user || null;
     clearInterval(cloudPollTimer);
+    clearTimeout(cloudSyncTimer);
     updateCloudAccountUI();
     if (!cloudUser) {
       lastCloudUpdatedAt = null;
@@ -933,26 +1023,25 @@ td strong { font-size:11px; }
 
     setCloudStatus('● Loading your cloud records…');
     try {
-      const { data, error } = await cloudClient
-        .from('pesoplan_data')
-        .select('data, updated_at')
-        .eq('user_id', cloudUser.id)
-        .maybeSingle();
-      if (error) throw error;
-
-      if (data) {
+      const record = await fetchCloudRecord();
+      if (record) {
         const localHasData = state.transactions.length > 0 ||
           state.wishes.length > 0 ||
           Object.values(state.balances).some(value => Number(value) !== 0);
         if (localHasData) {
-          // Preserve a copy of this browser's current data before cloud data replaces it.
           try { localStorage.setItem(KEY + '_before_cloud_login', JSON.stringify(state)); } catch (e) {}
         }
-        applyCloudState(data.data);
-        lastCloudUpdatedAt = data.updated_at;
-        setCloudStatus('● Synced to cloud');
+        const merge = mergeCloudStates(state, record.data);
+        applyCloudState(merge.state);
+        lastCloudUpdatedAt = record.updated_at;
+        if (merge.added) {
+          setCloudStatus(`● Preserved ${merge.added} local transaction${merge.added===1?'':'s'} · merging to cloud…`);
+          await pushCloudData();
+        } else {
+          setCloudStatus('● Synced to cloud');
+        }
       } else {
-        // First sign-in: migrate this browser's existing tracker data to the new cloud account.
+        // No cloud record exists yet: first sign-in migration remains unchanged.
         await pushCloudData();
       }
       cloudPollTimer = setInterval(() => pullCloudData(false), 15000);
@@ -1437,7 +1526,7 @@ td strong { font-size:11px; }
     const date = document.getElementById('incomeDate').value;
     if (!Number.isFinite(amount) || amount <= 0 || !date) return toast('Enter a valid amount and date.');
     CATEGORIES.forEach(c => state.balances[c.id] += amount * c.percent / 100);
-    addTransaction({id:makeId(), type:'income', amount, date, note:document.getElementById('incomeNote').value.trim(), createdAt:Date.now()});
+    addTransaction({id:makeId(), type:'income', amount, date, note:document.getElementById('incomeNote').value.trim(), allocations:CATEGORIES.map(c=>({category:c.id,amount:amount*Number(c.percent||0)/100})), createdAt:Date.now()});
     e.target.reset(); document.getElementById('incomeDate').value = today(); toast('Money added and distributed across your categories.');
   });
   document.getElementById('expenseForm').addEventListener('submit', e => {

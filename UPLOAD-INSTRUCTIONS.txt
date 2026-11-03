@@ -1,24 +1,38 @@
-PESOPLAN — GITHUB PAGES OFFLINE UPDATE
+PESOPLAN — TRANSACTION-SAFE OFFLINE/CLOUD SYNC UPDATE
 
-FILES IN THIS FOLDER
-- index.html: the latest PesoPlan HTML you supplied, renamed for GitHub Pages.
-- service-worker.js: offline app-shell caching for the /Expenses/ GitHub Pages path.
-- manifest.webmanifest: your existing PWA manifest.
-- supabase-config.js: your existing browser-safe Supabase URL and publishable key.
+THIS UPDATE
+- Keeps Supabase as the authoritative starting point when the cloud row exists.
+- Merges locally stored transactions that are missing from the cloud by transaction ID.
+- Starts balance reconciliation from the cloud balances and applies only the balance effect of locally missing transactions. It does not add two devices' complete balances together.
+- Reads the latest cloud row before each upload, then writes the merged transaction list.
+- Retries synchronization when the device comes back online.
+- Bumps the service-worker cache name so the browser replaces the old app shell after deployment.
 
-UPLOAD STEPS
-1. Make a backup first: in your GitHub repository, download the current repository ZIP, and export a PesoPlan data backup from the app if that feature is available.
-2. Open https://github.com/digitized-droid/Expenses
-3. Click Add file > Upload files.
-4. Upload/replace the four files above at the REPOSITORY ROOT (same level as the current index.html). Do not upload the containing folder as a nested folder.
-5. Keep your existing icons/ folder and its icon-192.png and icon-512.png files. Do not delete it.
-6. Commit the changes to the main branch.
-7. Wait for GitHub Pages to finish deploying. Open https://digitized-droid.github.io/Expenses/ while online, wait for the page to finish loading, then close and reopen it once.
-8. Test offline by enabling airplane mode and opening the installed app. The first successful online visit is required to install/cache the offline shell.
+BEFORE UPLOADING
+1. Do not clear browser/site data or uninstall the app.
+2. While online, export a PesoPlan backup if the app's export feature is available.
+3. Keep a copy of the current GitHub repository ZIP and your existing icons/ folder.
+4. If you have important offline-only transactions on another device, do not sign that device in and sync it until you have exported a backup. This update merges locally present transactions, but the app cannot recover records that have already been erased from browser storage.
+
+UPLOAD
+1. Open https://github.com/digitized-droid/practicemedaddy
+2. Upload/replace the files inside this folder at the repository root: index.html, service-worker.js, manifest.webmanifest, supabase-config.js, README.md, and UPLOAD-INSTRUCTIONS.txt.
+3. Do not delete any existing icons/ folder or other repository assets.
+4. Commit the changes to the branch used by GitHub Pages (usually main).
+5. Wait for GitHub Pages to deploy, then open https://digitized-droid.github.io/practicemedaddy/ while online.
+6. Refresh once. The service worker uses a new cache version and should replace the previous app shell. If an installed PWA still shows the old version, close it fully and reopen it while online; if needed, clear only that site's cached files after confirming your data backup is safe. Do not clear site storage.
+
+TESTING THE SYNC
+1. On the device with the cloud data, open the app online and sign in. Confirm the expected cloud transactions are visible.
+2. Add one clearly identifiable test transaction while online and confirm it appears on another device after sync.
+3. On one device, go offline and add a different test transaction. Confirm it remains visible after refreshing/reopening the app offline.
+4. Reconnect that device to the internet. Wait for the status to report that it synced, then check the other device for the transaction.
+5. Confirm the transaction appears exactly once on both devices and balances reflect the transaction once.
+6. Delete test transactions only after confirming sync on both devices.
 
 IMPORTANT LIMITATIONS
-- This package enables the app shell to load offline and the existing app saves edits to this device's localStorage.
-- It does NOT yet fix the cloud-sync conflict bug. The current app uploads one whole JSON document and can replace local state with cloud state. Do not use two devices to edit the same account until conflict-safe merge is implemented and tested.
-- The Supabase JavaScript library is loaded from jsDelivr. The tracker itself should still open offline because cloud initialization is optional, but cloud sign-in/sync requires internet.
-- Browser storage is device/browser-specific. Clearing app/site data or uninstalling the app may erase local-only edits. Export backups regularly.
-- If you already installed an older APK, the APK wrapper may retain an old WebView/cache. Test the GitHub Pages URL in Chrome first. If it works there but not in the APK, rebuild/update the APK in FreeWebToAPK using the same URL.
+- This patch prioritizes adding/preserving transactions. It merges remote and local transaction records by ID. It does not yet implement deletion tombstones or conflict resolution for editing an existing transaction. A transaction deleted offline may reappear when merged with the cloud; resolve such deletions while online on the device that has the latest cloud state.
+- Non-transaction data (wishes, bills, settings, categories) continues to use the cloud record as the source of truth when a cloud row already exists. This update is not a complete multi-device merge for those sections.
+- The database still stores the app state as one JSON row. Reading the latest row before writing reduces stale overwrites, but it is not a fully atomic transaction log; simultaneous edits from two devices at exactly the same time can still race.
+- Keep regular exports. Browser storage is device/browser-specific and can be erased by clearing site data or uninstalling the app.
+- Cloud sign-in/sync requires internet. The app shell and localStorage data can work offline after the app has been opened online once.

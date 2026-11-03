@@ -1,5 +1,5 @@
 /* PesoPlan offline app shell for GitHub Pages. Keep this file beside index.html. */
-const CACHE_NAME = "pesoplan-shell-v2";
+const CACHE_NAME = "pesoplan-shell-v3-transaction-merge";
 const APP_SHELL = [
   new URL("./", self.registration.scope).href,
   new URL("./index.html", self.registration.scope).href,
