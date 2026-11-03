@@ -790,10 +790,10 @@ td strong { font-size:11px; }
       const saved = JSON.parse(localStorage.getItem(KEY));
       if (saved && saved.balances && Array.isArray(saved.transactions) && Array.isArray(saved.wishes)) {
         if (Array.isArray(saved.categories) && saved.categories.length) CATEGORIES = saved.categories.map(c => ({...c}));
-        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:saved.transactions, wishes:saved.wishes, bills:Array.isArray(saved.bills)?saved.bills:[], paidBills:Array.isArray(saved.paidBills)?saved.paidBills:[], reminderGroups:Array.isArray(saved.reminderGroups)&&saved.reminderGroups.length?saved.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[]};
+        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:saved.transactions, wishes:saved.wishes, bills:Array.isArray(saved.bills)?saved.bills:[], paidBills:Array.isArray(saved.paidBills)?saved.paidBills:[], reminderGroups:Array.isArray(saved.reminderGroups)&&saved.reminderGroups.length?saved.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[]};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[]};
+    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[]};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -880,6 +880,10 @@ td strong { font-size:11px; }
       ...(Array.isArray(remote?.deletedTransactionIds) ? remote.deletedTransactionIds : []),
       ...(Array.isArray(localState?.deletedTransactionIds) ? localState.deletedTransactionIds : [])
     ].map(String));
+    const deletedBillIds = new Set([
+      ...(Array.isArray(remote?.deletedBillIds) ? remote.deletedBillIds : []),
+      ...(Array.isArray(localState?.deletedBillIds) ? localState.deletedBillIds : [])
+    ].map(String));
     const byId = new Map();
     remoteTransactions.forEach(t => { if (t && t.id != null && !deletedIds.has(String(t.id))) byId.set(String(t.id), t); });
     const localOnly = localTransactions.filter(t => t && t.id != null &&
@@ -916,8 +920,10 @@ td strong { font-size:11px; }
       balances,
       transactions: [...byId.values()],
       deletedTransactionIds: [...deletedIds],
+      deletedBillIds: [...deletedBillIds],
       wishes: Array.isArray(remote.wishes) ? remote.wishes : (localState.wishes || []),
-      bills: mergeRecords(localState?.bills, remote.bills),
+      bills: mergeRecords(localState?.bills, remote.bills)
+        .filter(b => b && b.id != null && !deletedBillIds.has(String(b.id))),
       paidBills: mergeRecords(localState?.paidBills, remote.paidBills),
       reminderGroups: mergeRecords(localState?.reminderGroups, remote.reminderGroups)
     } : {
@@ -999,7 +1005,8 @@ td strong { font-size:11px; }
       wishes: remoteState.wishes,
       bills: Array.isArray(remoteState.bills) ? remoteState.bills : [],
       paidBills: Array.isArray(remoteState.paidBills) ? remoteState.paidBills : [],
-      deletedTransactionIds: Array.isArray(remoteState.deletedTransactionIds) ? remoteState.deletedTransactionIds : []
+      deletedTransactionIds: Array.isArray(remoteState.deletedTransactionIds) ? remoteState.deletedTransactionIds : [],
+      deletedBillIds: Array.isArray(remoteState.deletedBillIds) ? remoteState.deletedBillIds : []
     };
     try { state.categories = CATEGORIES;
       localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
@@ -1818,7 +1825,14 @@ td strong { font-size:11px; }
     if (delB) {
       const billId = delB.dataset.deleteBill;
       if (!confirm('Delete this bill reminder?')) return;
-      state.bills = (state.bills || []).filter(b => b.id !== billId && b.parentId !== billId);
+      state.deletedBillIds = Array.isArray(state.deletedBillIds) ? state.deletedBillIds : [];
+      const removedBills = (state.bills || []).filter(b => String(b.id) === String(billId) || String(b.parentId) === String(billId));
+      if (!state.deletedBillIds.includes(String(billId))) state.deletedBillIds.push(String(billId));
+      removedBills.forEach(b => {
+        const deletedId = String(b.id);
+        if (!state.deletedBillIds.includes(deletedId)) state.deletedBillIds.push(deletedId);
+      });
+      state.bills = (state.bills || []).filter(b => String(b.id) !== String(billId) && String(b.parentId) !== String(billId));
       save(); renderBills(); toast('Bill reminder deleted.');
     }
   });
