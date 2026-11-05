@@ -1187,16 +1187,22 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       `<optgroup label="${collection} collection">${PESOPLAN_THEMES.filter(t => t.collection === collection).map(t =>
         `<option value="${t.id}">${String(t.id).padStart(2,'0')}. ${escapeHTML(t.name)}</option>`).join('')}</optgroup>`
     ).join('');
-    let savedTheme = 1;
-    try { savedTheme = Number(localStorage.getItem(THEME_KEY) || 1); } catch (e) {}
+    let savedTheme = Number(state.themeId || 1);
+    try { if (!state.themeId) savedTheme = Number(localStorage.getItem(THEME_KEY) || 1); } catch (e) {}
     applyTheme(savedTheme, false);
     select.addEventListener('change', () => applyTheme(Number(select.value), false));
     document.getElementById('applyThemeBtn').addEventListener('click', () => {
       const theme = applyTheme(Number(select.value), true);
+      state.themeId = theme.id;
+      state.themeUpdatedAt = Date.now();
+      save();
       toast(`${theme.name} applied successfully.`);
     });
     document.getElementById('resetThemeBtn').addEventListener('click', () => {
       applyTheme(1, true);
+      state.themeId = 1;
+      state.themeUpdatedAt = Date.now();
+      save();
       toast('Original PesoPlan theme restored.');
     });
   }
@@ -1210,10 +1216,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         if (!syncMeta.categoriesAt && JSON.stringify(CATEGORIES) !== JSON.stringify(DEFAULT_CATEGORIES)) syncMeta.categoriesAt = migratedAt;
         const migrateRecords = items => (Array.isArray(items) ? items : []).map(item =>
           item && item.id != null && !item.updatedAt ? {...item, updatedAt:migratedAt} : item);
-        return {categories:CATEGORIES,balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
+        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -1383,7 +1389,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       _syncMeta: {
         categoriesAt: Math.max(localCategoriesAt, remoteCategoriesAt),
         stateAt: Math.max(Number(localMeta.stateAt || 0), Number(remoteMeta.stateAt || 0))
-      }
+      },
+      themeId: Number(local.themeUpdatedAt || 0) > Number(remote?.themeUpdatedAt || 0)
+        ? Number(local.themeId || 1) : Number(remote.themeId || local.themeId || 1),
+      themeUpdatedAt: Math.max(Number(local.themeUpdatedAt || 0), Number(remote?.themeUpdatedAt || 0))
     } : {
       ...local,
       transactions: [...transactionMap.values()],
@@ -1469,6 +1478,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     if (Array.isArray(remoteState.categories) && remoteState.categories.length) CATEGORIES = remoteState.categories.map(c => ({...c}));
     state = {
       categories: CATEGORIES,
+      themeId: Number(remoteState.themeId || state.themeId || 1),
+      themeUpdatedAt: Number(remoteState.themeUpdatedAt || state.themeUpdatedAt || 0),
       reminderGroups: Array.isArray(remoteState.reminderGroups) && remoteState.reminderGroups.length ? remoteState.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g})),
       balances: { ...blankBalances(), ...remoteState.balances },
       transactions: remoteState.transactions,
@@ -1485,8 +1496,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     };
     try { state.categories = CATEGORIES;
       localStorage.setItem(KEY, JSON.stringify(state));
+      localStorage.setItem(THEME_KEY, String(state.themeId || 1));
       lastSavedSnapshot = JSON.stringify(state);
     } catch (e) {}
+    applyTheme(state.themeId || 1, false);
     render();
     return true;
   }
@@ -1536,10 +1549,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           }
         } catch (e) {}
         CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
-        state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
+        try { localStorage.removeItem(THEME_KEY); } catch (e) {}
+        state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
           reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
       }
       try { localStorage.setItem(ownerKey, nextUser.id); } catch (e) {}
+      if (previousOwner !== nextUser.id) applyTheme(1, false);
     }
     cloudUser = nextUser;
     updateCloudAccountUI();
@@ -2797,7 +2812,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const data = JSON.parse(await file.text());
       if (!data.balances || !Array.isArray(data.transactions) || !Array.isArray(data.wishes)) throw new Error('Invalid backup');
       if (!await showConfirm('Import this backup? It will replace the data currently saved in this browser.')) return;
-      if (Array.isArray(data.categories) && data.categories.length) CATEGORIES = data.categories.map(c=>({...c})); state = {categories:CATEGORIES,reminderGroups:Array.isArray(data.reminderGroups)&&data.reminderGroups.length?data.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})),balances:{...blankBalances(),...data.balances},transactions:data.transactions,wishes:data.wishes,bills:Array.isArray(data.bills)?data.bills:[],paidBills:Array.isArray(data.paidBills)?data.paidBills:[]}; save(); render(); toast('Backup imported successfully.');
+      if (Array.isArray(data.categories) && data.categories.length) CATEGORIES = data.categories.map(c=>({...c})); state = {categories:CATEGORIES,themeId:Number(data.themeId || state.themeId || 1),themeUpdatedAt:Number(data.themeUpdatedAt || Date.now()),reminderGroups:Array.isArray(data.reminderGroups)&&data.reminderGroups.length?data.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})),balances:{...blankBalances(),...data.balances},transactions:data.transactions,wishes:data.wishes,bills:Array.isArray(data.bills)?data.bills:[],paidBills:Array.isArray(data.paidBills)?data.paidBills:[]}; applyTheme(state.themeId,false); save(); render(); toast('Backup imported successfully.');
     } catch (err) { toast('Could not import this file. Please choose a valid PesoPlan backup.'); }
     e.target.value='';
   });
