@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PesoPlan — Personal Budget Tracker</title>
+<title>EUnify — Personal Budget Tracker</title>
 <style>
 :root {
   --site-primary: #315c4c;
@@ -616,10 +616,118 @@ td strong { font-size:11px; }
 
 .recent-activity-more { display:flex; justify-content:center; padding:14px 0 2px; }
 .recent-activity-more .btn { min-width:190px; }
-\n</style>
+
+/* Circular, draggable EUnify guide bubble. It stays flush with the far-right edge. */
+#guideBubble {
+  position:fixed;
+  right:0;
+  top:90px; /* directly below the header on first load */
+  z-index:9998;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 48px;
+  width:48px;
+  height:48px;
+  min-width:48px;
+  min-height:48px;
+  max-width:48px;
+  max-height:48px;
+  box-sizing:border-box;
+  padding:0;
+  border:2px solid var(--site-secondary);
+  border-radius:50%;
+  background:var(--site-secondary);
+  color:var(--site-on-secondary);
+  box-shadow:0 4px 14px rgba(0,0,0,.24);
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  overflow:hidden;
+  font-size:0;
+  line-height:0;
+}
+/* The button has display:flex, so explicitly preserve the HTML hidden state. */
+#guideBubble[hidden] { display:none !important; }
+#guideBubble:active { cursor:grabbing; }
+#guideBubble:focus-visible { outline:3px solid var(--site-primary); outline-offset:3px; }
+#guideBubble img {
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:100%;
+  max-height:100%;
+  object-fit:cover;
+  object-position:center;
+  border-radius:50%;
+}
+#guideBubble .guide-bubble-label { display:none; }
+.guide-menu {
+  position:fixed; right:56px; top:90px; z-index:9999; width:min(280px,calc(100vw - 64px));
+  max-height:min(62vh,540px); overflow-y:auto; overscroll-behavior:contain;
+  background:var(--surface); color:var(--site-on-background);
+  border:1px solid var(--line); border-radius:18px; box-shadow:0 12px 32px rgba(0,0,0,.20); padding:14px;
+}
+.guide-menu[hidden], .guide-overlay[hidden] { display:none!important; }
+.guide-menu h3 { margin:0 0 5px; font-size:16px; }
+.guide-menu p { margin:0 0 12px; color:var(--muted); font-size:12px; line-height:1.5; }
+.guide-feature-list { display:grid; gap:6px; }
+.guide-feature-list button { text-align:left; width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 11px; background:var(--surface-soft); color:var(--site-on-background); font:inherit; font-size:12px; cursor:pointer; }
+.guide-feature-list button:hover, .guide-feature-list button:focus-visible { border-color:var(--site-primary); outline-color:var(--site-primary); }
+.guide-overlay {
+  position:fixed; inset:0; z-index:10000; display:grid; place-items:center; padding:18px;
+  background:rgba(10,18,14,.58);
+}
+.guide-dialog {
+  width:min(480px,100%); max-height:min(88vh,760px); overflow:auto; background:var(--surface); color:var(--site-on-background);
+  border:1px solid var(--line); border-radius:20px; padding:22px;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.guide-dialog h3 { margin:0 0 9px; font-size:20px; }
+.guide-dialog p { margin:0; color:var(--muted); font-size:14px; line-height:1.65; white-space:pre-line; }
+/* Each guide feature has its own replaceable visual. Contain preserves the whole image. */
+.guide-image-frame {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:170px;
+  margin:16px 0 0;
+  padding:12px;
+  box-sizing:border-box;
+  background:var(--surface-soft);
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+}
+.guide-image-frame[hidden] { display:none !important; }
+.guide-image-frame img {
+  display:block;
+  width:100%;
+  height:260px;
+  max-width:100%;
+  object-fit:contain;
+  object-position:center;
+  border-radius:8px;
+}
+.guide-step-controls { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+.guide-step-controls[hidden] { display:none !important; }
+.guide-step-controls button { border:1px solid var(--line); border-radius:9px; padding:9px 13px; background:var(--surface-soft); color:var(--site-on-background); font-weight:700; cursor:pointer; }
+.guide-step-controls button:disabled { opacity:.45; cursor:not-allowed; }
+.guide-step-controls span { color:var(--muted); font-size:12px; font-weight:700; }
+.guide-dialog-actions { display:flex; justify-content:flex-end; margin-top:16px; }
+.guide-dialog-actions button { border:0; border-radius:10px; padding:11px 20px; background:var(--site-primary); color:var(--site-on-primary); font-weight:800; cursor:pointer; }
+.guide-setting-row { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-top:12px; }
+.guide-setting-row .btn { min-width:190px; }
+@media(max-width:520px) {
+ #guideBubble { right:0; }
+ .guide-menu { right:56px; width:min(280px,calc(100vw - 64px)); max-height:62vh; padding:12px; }
+ .guide-dialog { padding:17px; }
+}
+</style>
 
 <meta name="theme-color" content="#315c4c">
-<meta name="description" content="PesoPlan — a thoughtful personal budget tracker.">
+<meta name="description" content="EUnify — a thoughtful personal budget tracker.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <script src="supabase-config.js"></script>
@@ -672,17 +780,40 @@ td strong { font-size:11px; }
 /* Centralized theme roles: these variables drive every surface and control. */
 :root { color-scheme: light; }
 body, #app, main { background:var(--site-background)!important; color:var(--text)!important; }
-.panel, .summary-card, .category-card, .bill-card, .reminder-group, .confirm-dialog,
+.panel, .summary-card:not(.primary), .category-card, .bill-card, .reminder-group, .confirm-dialog,
 .category-delete-dialog, .modal-card, .report-card, .paid-bill-record,
 .wish-card, .priority-item, .app-settings-panel {
   background:var(--surface)!important; color:var(--text)!important; border-color:var(--line)!important;
 }
+.summary-card.primary {
+  background:var(--site-primary)!important;
+  color:var(--site-on-primary)!important;
+  border-color:transparent!important;
+}
+.summary-card.primary .card-label,
+.summary-card.primary .amount,
+.summary-card.primary .card-note,
+.summary-card.primary .summary-icon { color:var(--site-on-primary)!important; }
+
 .topbar { background:var(--site-primary)!important; color:var(--site-on-primary)!important; }
 .topbar .brand-mark { background:var(--site-secondary)!important; color:var(--site-on-secondary)!important; }
 h1,h2,h3,h4,h5,strong,b,label,th,.category-name,.category-balance,.amount,.card-label { color:var(--text); }
 p,.sub,.panel-desc,.report-note,.card-note,.muted,.footer,small { color:var(--muted); }
-.btn-primary, .btn-secondary, .section-toggle[aria-expanded="true"], .bill-group-add {
-  background:var(--site-secondary)!important; color:var(--site-on-secondary)!important; border-color:var(--site-secondary)!important;
+.btn-primary {
+  background:var(--site-primary)!important;
+  color:var(--site-on-primary)!important;
+  border-color:var(--site-primary)!important;
+}
+.btn-secondary, .section-toggle[aria-expanded="true"], .bill-group-add {
+  background:var(--site-secondary)!important;
+  color:var(--site-on-secondary)!important;
+  border-color:var(--site-secondary)!important;
+}
+.actions-grid > .panel:first-child {
+  background:color-mix(in srgb, var(--site-primary) 7%, var(--surface))!important;
+}
+.actions-grid > .panel:nth-child(2) {
+  background:color-mix(in srgb, var(--site-secondary) 13%, var(--surface))!important;
 }
 .btn-quiet, .icon-btn, .reminder-group-actions button, .wish-category-tabs button {
   background:var(--surface-soft)!important; color:var(--text)!important; border-color:var(--line)!important;
@@ -745,7 +876,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 <style id="theme-contrast-fixes">
 /* Theme-aware reminder cards: keep previews and expanded details readable
-   in every PesoPlan palette, including the dark aesthetic themes. */
+   in every EUnify palette, including the dark aesthetic themes. */
 .bill-preview-card,
 .bill-preview-card:nth-child(1),
 .bill-preview-card:nth-child(2),
@@ -815,11 +946,95 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 </style>
 
+
+<style id="theme-aware-overview-and-reminder-icons">
+  /* Light themes retain their original theme color; dark themes use a
+     lighter accent so the label and reminder icons stay visible. */
+  .welcome .eyebrow,
+  .bill-preview-star,
+  .bill-card-star {
+    color: var(--overview-reminder-accent, var(--site-primary)) !important;
+  }
+</style>
+
+
+<style id="reminder-editor-spacing-and-mobile-alignment">
+/* Reminder settings: give each reminder its own breathing room and clear layout. */
+.all-reminders-manager { padding:20px; border-radius:18px; }
+.all-reminders-heading { margin-bottom:16px; }
+#allUpcomingReminders { display:grid; gap:12px; }
+.upcoming-reminder-row {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 16px;
+  align-items:center; padding:16px; margin:0;
+  border:1px solid var(--line); border-radius:14px;
+  background:var(--surface-soft); min-width:0;
+}
+.upcoming-reminder-main { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.upcoming-reminder-main strong { font-size:14px; overflow-wrap:anywhere; }
+.upcoming-reminder-main span,.upcoming-reminder-main small { color:var(--muted); line-height:1.5; }
+.upcoming-reminder-amount { white-space:nowrap; font-size:15px; align-self:start; }
+.upcoming-reminder-actions {
+  grid-column:1/-1; display:flex; justify-content:flex-end; align-items:center;
+  flex-wrap:wrap; gap:8px; padding-top:10px; border-top:1px solid var(--line);
+}
+.upcoming-reminder-actions label { display:inline-flex; align-items:center; gap:6px; margin-right:auto; font-size:12px; }
+.upcoming-reminder-actions .btn { min-height:36px; padding:8px 13px; }
+.bill-edit-dialog { max-height:90vh; overflow:auto; }
+.bill-edit-dialog .field { margin:12px 0; }
+.bill-edit-dialog input,.bill-edit-dialog select { width:100%; }
+
+/* Keep category controls and buttons on the same visual centerline on phones. */
+.category-setting-row { align-items:center; }
+.category-setting-row input,.category-setting-row button { min-width:0; min-height:42px; margin:0; align-self:center; }
+.category-setting-row .category-delete { white-space:nowrap; padding:9px 10px; line-height:1.2; }
+.wish-edit-dialog .confirm-dialog-actions { align-items:center; flex-wrap:wrap; }
+.wish-edit-dialog .confirm-dialog-actions button { min-height:44px; margin:0; }
+@media(max-width:600px) {
+  .app-popup-modal { padding:10px; }
+  .app-popup-dialog { padding:16px; max-height:94vh; }
+  .all-reminders-manager { padding:13px; }
+  .upcoming-reminder-row { padding:13px; gap:8px 10px; }
+  /* Keep Mark paid on the left and the action buttons on the right on phones too. */
+  .upcoming-reminder-actions {
+    justify-content:flex-start;
+    flex-wrap:nowrap;
+    gap:8px;
+  }
+  .upcoming-reminder-actions label {
+    width:auto;
+    min-width:0;
+    flex:0 1 auto;
+    margin:0 auto 0 0;
+    white-space:normal;
+  }
+  .upcoming-reminder-actions .btn {
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+  .category-setting-row {
+    grid-template-columns:minmax(0,1fr) 68px 38px 66px;
+    gap:5px; margin:10px 0;
+  }
+  .category-setting-row input { width:100%; padding:9px 7px; font-size:12px; }
+  .category-setting-row .category-setting-icon { padding:8px 3px; }
+  .category-setting-row .category-delete { grid-column:auto; justify-self:stretch; width:100%; padding:8px 4px; font-size:11px; }
+  .wish-edit-dialog { padding:18px 16px; }
+  .wish-edit-dialog .confirm-dialog-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .wish-edit-dialog .confirm-dialog-actions button { width:100%; min-width:0; }
+}
+@media(max-width:360px) {
+  .category-setting-row { grid-template-columns:minmax(0,1fr) 58px 34px 60px; gap:4px; }
+  .category-setting-row input { font-size:11px; }
+  .category-setting-row .category-delete { font-size:10px; }
+}
+
+</style>
+
 </head>
 <body>
 <div id="app">
   <header class="topbar">
-    <div class="brand"><div class="brand-mark"><img src="logos/1.png" alt="PesoPlan logo"></div><div><h1>PesoPlan</h1><small>Your money, thoughtfully divided</small></div></div>
+    <div class="brand"><div class="brand-mark"><img src="logos/1.png" alt="EUnify logo"></div><div><h1>EUnify</h1><small>Your money, thoughtfully divided</small></div></div>
     <div class="top-actions"><span class="pill">PERSONAL BUDGET</span><span id="saveStatus">● Saved on this device</span><button class="cloud-account-btn" id="cloudAccountBtn" type="button">☁ Connect account</button><button class="cloud-account-btn" id="openAppSettingsBtn" type="button" aria-haspopup="dialog">⚙ Settings</button></div>
   </header>
   <main>
@@ -827,7 +1042,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div><div class="eyebrow">Your financial overview</div><h2>Make every peso count.</h2><p class="sub">Track what comes in, what goes out, and what remains for each part of your life.</p></div>
       <div class="date-label" id="todayLabel"></div>
     </div>
-    <section class="summary-grid" aria-label="Available capital">
+    <section class="summary-grid" id="availableCapitalSection" aria-label="Available capital">
       <div class="summary-card primary" style="grid-column:1/-1"><span class="summary-icon">◈</span><div class="card-label">Available capital</div><div class="amount" id="totalBalance">₱0.00</div><div class="card-note">Your current total across all categories</div></div>
     </section>
 
@@ -983,7 +1198,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="paid-bills-list" id="paidBillsList"></div>
     </section>
 
-    <div class="footer">PesoPlan · A simple way to keep your pesos organized</div>
+    <div class="footer">EUnify · A simple way to keep your pesos organized</div>
   </main>
 </div>
 
@@ -1008,7 +1223,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <div class="cloud-modal" id="cloudModal" hidden>
   <div class="cloud-dialog" role="dialog" aria-modal="true" aria-labelledby="cloudTitle">
     <button class="close-cloud" id="cloudCloseBtn" type="button" aria-label="Close">×</button>
-    <h3 id="cloudTitle">Sync PesoPlan</h3>
+    <h3 id="cloudTitle">Connect your EUnify account</h3>
     <p id="cloudIntro">Sign in with the same account on your phone and computer to access the same budget records.</p>
     <div id="cloudAuthFields">
       <div class="field"><label for="cloudEmail">Email address</label><input id="cloudEmail" type="email" autocomplete="email" placeholder="you\@example.com"></div>
@@ -1031,23 +1246,30 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   <div class="app-popup-dialog" role="dialog" aria-modal="true" aria-labelledby="appSettingsTitle">
     <div class="app-popup-head"><div></div></div>
     
-        <div class="panel-head"><div><h3>PesoPlan settings</h3><div class="panel-desc">Customize the appearance and manage your saved tracker data.</div></div><button class="app-popup-close" type="button" data-close-popup="appSettingsModal" aria-label="Close settings">×</button></div>
+        <div class="panel-head"><div><h3>EUnify settings</h3><div class="panel-desc">Customize the appearance and manage your saved tracker data.</div></div><button class="app-popup-close" type="button" data-close-popup="appSettingsModal" aria-label="Close settings">×</button></div>
         <section class="settings-subsection">
           <div class="settings-subhead"><div><h4>Website theme</h4><p class="panel-desc">Choose from 50 coordinated color combinations. Selecting a theme previews it immediately.</p></div><span class="settings-theme-number" id="themeNumberLabel">01 / 50</span></div>
-          <label class="sr-only" for="themeSelect">Choose a PesoPlan theme</label>
+          <label class="sr-only" for="themeSelect">Choose an EUnify theme</label>
           <select id="themeSelect" class="settings-theme-select"></select>
           <div class="theme-preview" id="themePreview" aria-live="polite">
             <div class="theme-preview-swatches" id="themePreviewSwatches"></div>
-            <div><strong id="themePreviewName">Original PesoPlan</strong><small id="themePreviewCollection">Original collection</small></div>
+            <div><strong id="themePreviewName">Original EUnify</strong><small id="themePreviewCollection">Original collection</small></div>
           </div>
           <div class="settings-actions">
             <button class="btn btn-primary" type="button" id="applyThemeBtn">Apply theme</button>
             <button class="btn btn-quiet" type="button" id="resetThemeBtn">Reset to original theme</button>
           </div>
-          <p class="settings-note">Matching logo files are loaded from <code>logos/1.png</code> through <code>logos/50.png</code>. If a numbered logo has not been uploaded yet, PesoPlan uses the original logo.</p>
+          <p class="settings-note">Matching logo files are loaded from <code>logos/1.png</code> through <code>logos/50.png</code>. If a numbered logo has not been uploaded yet, EUnify uses the original logo.</p>
+        </section>
+        <section class="settings-subsection" aria-labelledby="guideBubbleSettingsTitle">
+          <div class="settings-subhead"><div><h4 id="guideBubbleSettingsTitle">Instruction bubble</h4><p class="panel-desc">Show or hide the circular floating guide on the side of the website. Your choice is saved on this device and synchronized to your cloud account when connected.</p></div></div>
+          <div class="guide-setting-row">
+            <span class="settings-note" id="guideBubbleSettingStatus" aria-live="polite">The instruction bubble is enabled.</span>
+            <button class="btn btn-primary" type="button" id="toggleGuideBubbleBtn" aria-pressed="true">Hide instruction bubble</button>
+          </div>
         </section>
         <section class="settings-subsection">
-          <div class="settings-subhead"><div><h4>Reset PesoPlan data</h4><p class="panel-desc">Restore the default categories and clear reminders, wishlist items, transactions, balances, reports, and paid history.</p></div></div>
+          <div class="settings-subhead"><div><h4>Reset EUnify data</h4><p class="panel-desc">Restore the default categories and clear reminders, wishlist items, transactions, balances, reports, and paid history.</p></div></div>
           <p class="settings-warning">This removes the current tracker records from this device and, when signed in, synchronizes the reset to your cloud account. Export a backup first if you may need these records later.</p>
           <button class="btn btn-danger" type="button" id="resetAllDataBtn">Reset all tracker data</button>
         </section>
@@ -1065,6 +1287,44 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   </div>
 </div>
 
+
+<div class="guide-overlay" id="guideWelcomeOverlay" hidden>
+  <section class="guide-dialog" role="dialog" aria-modal="true" aria-labelledby="guideWelcomeTitle">
+    <h3 id="guideWelcomeTitle">Welcome to EUnify! 👋</h3>
+    <p>Welcome to EUnify! We're happy to have you here.
+
+Managing your money doesn't have to be complicated. We're here to help you get familiar with the website and discover how each feature can make budgeting easier.
+
+Need a little help along the way? Just tap the floating guide button on the right side of your screen. From there, you can explore our helpful guides and learn how to use each feature. Simply choose a topic, and we'll take you through it step by step!
+
+Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
+    <div class="guide-dialog-actions"><button type="button" id="guideWelcomeGotIt">Got it</button></div>
+  </section>
+</div>
+<button class="guide-bubble" id="guideBubble" type="button" aria-label="Open EUnify instruction guide" aria-expanded="false" aria-controls="guideMenu" title="Open instruction guide" hidden>
+  <img id="guideBubbleLogo" src="logos/1.png" alt=""><span class="guide-bubble-label">HELP</span>
+</button>
+<div class="guide-menu" id="guideMenu" hidden>
+  <h3>How can I help?</h3>
+  <p>Not sure where to start? Don't worry! Choose a feature below, and I'll show you how it works and how you can make the most of it.</p>
+  <div class="guide-feature-list" id="guideFeatureList"></div>
+</div>
+<div class="guide-overlay" id="guideExplanationOverlay" hidden>
+  <section class="guide-dialog" role="dialog" aria-modal="true" aria-labelledby="guideExplanationTitle">
+    <h3 id="guideExplanationTitle"></h3>
+    <p id="guideExplanationText"></p>
+    <div class="guide-image-frame" id="guideExplanationImageFrame">
+      <img id="guideExplanationImage" src="instruction-images/sign-in.jpg" alt="Sign in instruction visual">
+    </div>
+    <div class="guide-step-controls" id="guideStepControls" hidden>
+      <button type="button" id="guideStepPrevious" aria-label="Previous instruction step">Previous</button>
+      <span id="guideStepCount" aria-live="polite"></span>
+      <button type="button" id="guideStepNext" aria-label="Next instruction step">Next</button>
+    </div>
+    <div class="guide-dialog-actions"><button type="button" id="guideExplanationGotIt">Got it</button></div>
+  </section>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="confirm-overlay" id="wishEditOverlay" hidden>
   <section class="confirm-dialog wish-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="wishEditTitle">
@@ -1077,6 +1337,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="field"><label for="wishEditAmount">Estimated amount (₱)</label><input id="wishEditAmount" type="number" min="0" step="0.01" required></div>
       <div class="field"><label for="wishEditPriority">Priority</label><select id="wishEditPriority"><option>High</option><option>Medium</option><option>Low</option></select></div>
       <div class="confirm-dialog-actions"><button class="confirm-cancel" id="wishEditCancel" type="button">Cancel</button><button class="confirm-accept" type="submit">Save changes</button></div>
+    </form>
+  </section>
+</div>
+<div class="confirm-overlay" id="billEditOverlay" hidden>
+  <section class="confirm-dialog wish-edit-dialog bill-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="billEditTitle">
+    <h3 class="confirm-dialog-title" id="billEditTitle"><span class="confirm-dialog-star" aria-hidden="true">✎</span><span>Edit reminder</span></h3>
+    <form id="billEditForm">
+      <p class="panel-desc">Update the reminder details whenever the amount, due date, or schedule changes.</p>
+      <input type="hidden" id="billEditId">
+      <div class="field"><label for="billEditName">Reminder name</label><input id="billEditName" maxlength="80" required></div>
+      <div class="field"><label for="billEditCategory">Deduct from category</label><select id="billEditCategory" required></select></div>
+      <div class="field"><label for="billEditAmount">Amount (₱)</label><input id="billEditAmount" type="number" min="0.01" step="0.01" required></div>
+      <div class="field"><label for="billEditDueDate">Due date</label><input id="billEditDueDate" type="date" required></div>
+      <div class="field"><label for="billEditPriority">Priority</label><select id="billEditPriority"><option>Urgent</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+      <div class="field"><label for="billEditRepeat">Repeat</label><select id="billEditRepeat"><option value="once">One-time event</option><option value="daily">Daily</option><option value="weekdays">Weekdays (Mon–Fri)</option><option value="weekly">Weekly</option><option value="monthly">Monthly (same date)</option><option value="yearly">Yearly</option></select></div>
+      <div class="field"><label for="billEditReminderLead">Show reminder</label><select id="billEditReminderLead"><option value="0">On the due date</option><option value="1">1 day before</option><option value="3">3 days before</option><option value="7">7 days before</option><option value="14">14 days before</option><option value="30">30 days before</option><option value="60">60 days before</option><option value="90">90 days before</option></select></div>
+      <div class="field"><label for="billEditNote">Note (optional)</label><input id="billEditNote" maxlength="120"></div>
+      <div class="confirm-dialog-actions"><button class="confirm-cancel" id="billEditCancel" type="button">Cancel</button><button class="confirm-accept" type="submit">Save changes</button></div>
     </form>
   </section>
 </div>
@@ -1147,6 +1425,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       '--muted': c['Muted Text'],
       '--line': c.Border,
       '--good': dark ? '#72D6A0' : '#287A55',
+      '--overview-reminder-accent': dark ? '#72D6A0' : c.Header,
       '--bad': dark ? '#FF8B83' : '#B64D45',
       '--shadow': dark ? '0 12px 34px rgba(0,0,0,.18)' : '0 12px 34px rgba(32,48,39,.07)'
     };
@@ -1203,8 +1482,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       state.themeId = 1;
       state.themeUpdatedAt = Date.now();
       save();
-      toast('Original PesoPlan theme restored.');
+      toast('Original EUnify theme restored.');
     });
+    const guideToggle = document.getElementById('toggleGuideBubbleBtn');
+    guideToggle?.addEventListener('click', () => {
+      state.guideBubbleEnabled = state.guideBubbleEnabled === false;
+      state.guideBubbleUpdatedAt = Date.now();
+      updateGuideBubbleSettingUI();
+      save();
+      toast(state.guideBubbleEnabled ? 'Instruction bubble shown.' : 'Instruction bubble hidden.');
+    });
+    updateGuideBubbleSettingUI();
+  }
+  function updateGuideBubbleSettingUI() {
+    const enabled = state.guideBubbleEnabled !== false;
+    const button = document.getElementById('toggleGuideBubbleBtn');
+    const status = document.getElementById('guideBubbleSettingStatus');
+    if (button) {
+      button.textContent = enabled ? 'Hide instruction bubble' : 'Show instruction bubble';
+      button.setAttribute('aria-pressed', String(enabled));
+    }
+    if (status) status.textContent = enabled
+      ? 'The instruction bubble is enabled and visible after the first-visit note is dismissed.'
+      : 'The instruction bubble is hidden until you choose to show it again.';
+    document.documentElement.dataset.guideBubbleEnabled = enabled ? 'true' : 'false';
+    window.dispatchEvent(new CustomEvent('pesoplan:guide-preference-changed', {detail:{enabled}}));
   }
   function load() {
     try {
@@ -1216,10 +1518,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         if (!syncMeta.categoriesAt && JSON.stringify(CATEGORIES) !== JSON.stringify(DEFAULT_CATEGORIES)) syncMeta.categoriesAt = migratedAt;
         const migrateRecords = items => (Array.isArray(items) ? items : []).map(item =>
           item && item.id != null && !item.updatedAt ? {...item, updatedAt:migratedAt} : item);
-        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
+        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),guideBubbleEnabled:saved.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(saved.guideBubbleUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,guideBubbleEnabled:true,guideBubbleUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -1392,7 +1694,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       },
       themeId: Number(local.themeUpdatedAt || 0) > Number(remote?.themeUpdatedAt || 0)
         ? Number(local.themeId || 1) : Number(remote.themeId || local.themeId || 1),
-      themeUpdatedAt: Math.max(Number(local.themeUpdatedAt || 0), Number(remote?.themeUpdatedAt || 0))
+      themeUpdatedAt: Math.max(Number(local.themeUpdatedAt || 0), Number(remote?.themeUpdatedAt || 0)),
+      guideBubbleEnabled: Number(local.guideBubbleUpdatedAt || 0) > Number(remote?.guideBubbleUpdatedAt || 0)
+        ? local.guideBubbleEnabled !== false : remote?.guideBubbleEnabled !== false,
+      guideBubbleUpdatedAt: Math.max(Number(local.guideBubbleUpdatedAt || 0), Number(remote?.guideBubbleUpdatedAt || 0))
     } : {
       ...local,
       transactions: [...transactionMap.values()],
@@ -1451,7 +1756,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
       setCloudStatus('● Synced to cloud' + (merge.added ? ` · ${merge.added} offline transaction${merge.added===1?'':'s'} merged` : ''));
     } catch (error) {
-      console.error('PesoPlan cloud save:', error);
+      console.error('EUnify cloud save:', error);
       setCloudStatus('● Saved on this device · cloud sync pending');
     } finally {
       cloudBusy = false;
@@ -1480,6 +1785,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       categories: CATEGORIES,
       themeId: Number(remoteState.themeId || state.themeId || 1),
       themeUpdatedAt: Number(remoteState.themeUpdatedAt || state.themeUpdatedAt || 0),
+      guideBubbleEnabled: remoteState.guideBubbleEnabled !== false,
+      guideBubbleUpdatedAt: Number(remoteState.guideBubbleUpdatedAt || state.guideBubbleUpdatedAt || 0),
       reminderGroups: Array.isArray(remoteState.reminderGroups) && remoteState.reminderGroups.length ? remoteState.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g})),
       balances: { ...blankBalances(), ...remoteState.balances },
       transactions: remoteState.transactions,
@@ -1500,6 +1807,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       lastSavedSnapshot = JSON.stringify(state);
     } catch (e) {}
     applyTheme(state.themeId || 1, false);
+    updateGuideBubbleSettingUI();
     render();
     return true;
   }
@@ -1525,7 +1833,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         setCloudStatus('● Cloud data is up to date');
       }
     } catch (error) {
-      console.error('PesoPlan cloud load:', error);
+      console.error('EUnify cloud load:', error);
       setCloudStatus('● Offline · changes saved on this device');
     } finally {
       cloudBusy = false;
@@ -1541,7 +1849,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const ownerKey = KEY + '_owner';
       const previousOwner = localStorage.getItem(ownerKey);
       if (previousOwner !== nextUser.id) {
-        // Remove every prior PesoPlan browser-data key before loading this account.
+        // Remove every prior EUnify browser-data key before loading this account.
         try {
           for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
@@ -1550,8 +1858,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         } catch (e) {}
         CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
         try { localStorage.removeItem(THEME_KEY); } catch (e) {}
-        state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
+        state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, guideBubbleEnabled:true, guideBubbleUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
           reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+        updateGuideBubbleSettingUI();
       }
       try { localStorage.setItem(ownerKey, nextUser.id); } catch (e) {}
       if (previousOwner !== nextUser.id) applyTheme(1, false);
@@ -1592,7 +1901,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       cloudPollTimer = setInterval(() => pullCloudData(false), 15000);
       closeCloudModal();
     } catch (error) {
-      console.error('PesoPlan cloud initialization:', error);
+      console.error('EUnify cloud initialization:', error);
       setCloudStatus('● Could not load cloud data · local data is safe');
       cloudModalStatus.textContent = 'Could not connect to your cloud database. Check your setup and SQL policies. Your local browser data has not been deleted.';
     }
@@ -1667,8 +1976,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         }
       } catch (e) {}
       CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
-      state = {categories:CATEGORIES, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
+      state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, guideBubbleEnabled:true, guideBubbleUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
         reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+      updateGuideBubbleSettingUI();
       render();
       updateCloudAccountUI();
       setCloudStatus('● Signed out · this device is cleared');
@@ -1722,7 +2032,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       document.getElementById('saveStatus').textContent = cloudUser ? '● Saved on this device · syncing…' : '● Saved on this device';
       queueCloudSave();
     } catch (error) {
-      console.error('PesoPlan local save:', error);
+      console.error('EUnify local save:', error);
       document.getElementById('saveStatus').textContent = '● Browser storage unavailable';
       toast('Your browser blocked saving. Please allow site storage or export a backup.');
     }
@@ -1915,7 +2225,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
     rows.innerHTML = visible.length ? visible.map(t => {
       const isIncome = t.type === 'income';
-      return `<tr><td>${escapeHTML(t.date)}</td><td class="${isIncome?'type-income':'type-expense'}">${isIncome?'Money received':'Expense'}</td><td><strong>${escapeHTML(t.note || (isIncome?'Added capital':'Purchase'))}</strong></td><td>${isIncome?'All categories':escapeHTML(category(t.category)?.name || '—')}</td><td class="${isIncome?'type-income':'type-expense'}">${isIncome?'+':'−'}${peso(t.amount)}</td><td class="no-print"><button class="icon-btn" title="Delete transaction and reverse its effect" data-delete-transaction="${t.id}">✕</button></td></tr>`;
+      return `<tr><td>${escapeHTML(t.date)}</td><td class="${isIncome?'type-income':'type-expense'}">${isIncome?'Money received':'Expense'}</td><td><strong>${escapeHTML(t.note || (isIncome?'Added capital':'Purchase'))}</strong></td><td>${isIncome ? escapeHTML((t.category && category(t.category)?.name) || (Array.isArray(t.allocations) && t.allocations.length === 1 ? category(t.allocations[0].category)?.name : '') || 'All categories') : escapeHTML(category(t.category)?.name || '—')}</td><td class="${isIncome?'type-income':'type-expense'}">${isIncome?'+':'−'}${peso(t.amount)}</td><td class="no-print"><button class="icon-btn" title="Delete transaction and reverse its effect" data-delete-transaction="${t.id}">✕</button></td></tr>`;
     }).join('') : '<tr><td colspan="6" class="empty">No transactions yet. Add money received or record your first expense.</td></tr>';
 
     const hasMoreThanLimit = sorted.length > RECENT_ACTIVITY_LIMIT;
@@ -1977,6 +2287,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
         <strong class="upcoming-reminder-amount">${peso(b.amount)}</strong>
         <div class="upcoming-reminder-actions">
           <label><input type="checkbox" data-bill-check="${escapeHTML(b.id)}"> Mark paid</label>
+          <button class="btn btn-quiet" type="button" data-edit-bill="${escapeHTML(b.id)}">✎ Edit</button>
           <button class="btn btn-quiet" type="button" data-delete-bill="${escapeHTML(b.id)}">Delete</button>
         </div>
       </article>`;
@@ -2090,7 +2401,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
                   </div>
                   <div class="bill-card-actions">
                     <label class="bill-paid-check"><input class="priority-check" type="checkbox" data-bill-check="${escapeHTML(b.id)}"> Mark as paid</label>
-                    <button class="icon-btn bill-card-delete" type="button" title="Delete reminder" data-delete-bill="${escapeHTML(b.id)}">✕ Delete</button>
+                    <button class="btn btn-quiet" type="button" data-edit-bill="${escapeHTML(b.id)}">✎ Edit</button>
+                    <button class="btn btn-quiet" type="button" title="Delete reminder" data-delete-bill="${escapeHTML(b.id)}">✕ Delete</button>
                   </div>
                 </div>
               </article>`;
@@ -2386,6 +2698,51 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     state.wishes.push({id:makeId(), name, category:document.getElementById('wishCategory').value, amount:Number(document.getElementById('wishAmount').value)||0, priority:document.getElementById('wishPriority').value, done:false});
     save(); render(); e.target.reset(); toast('Added to your buy list.');
   });
+  function openBillEditor(billId) {
+    const bill = (state.bills || []).find(item => String(item.id) === String(billId));
+    if (!bill || bill.paid) return;
+    const overlay = document.getElementById('billEditOverlay');
+    const categorySelect = document.getElementById('billEditCategory');
+    categorySelect.innerHTML = CATEGORIES.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.icon || '')} ${escapeHTML(c.name)}</option>`).join('');
+    document.getElementById('billEditId').value = bill.id;
+    document.getElementById('billEditName').value = bill.name || '';
+    const billGroup = (state.reminderGroups || []).find(g => g.id === (bill.reminderGroupId || 'default-reminders'));
+    document.getElementById('billEditCategory').value = bill.category || billGroup?.category || CATEGORIES[0]?.id || '';
+    document.getElementById('billEditAmount').value = Number(bill.amount) || '';
+    document.getElementById('billEditDueDate').value = bill.dueDate || '';
+    document.getElementById('billEditPriority').value = bill.priority || 'Medium';
+    document.getElementById('billEditRepeat').value = bill.repeat || 'once';
+    document.getElementById('billEditReminderLead').value = String(bill.reminderLeadDays ?? 30);
+    document.getElementById('billEditNote').value = bill.note || '';
+    overlay.hidden = false;
+    document.getElementById('billEditName').focus();
+  }
+  document.getElementById('billEditCancel').addEventListener('click', () => { document.getElementById('billEditOverlay').hidden = true; });
+  document.getElementById('billEditOverlay').addEventListener('click', event => { if (event.target.id === 'billEditOverlay') event.currentTarget.hidden = true; });
+  document.getElementById('billEditForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const bill = (state.bills || []).find(item => String(item.id) === String(document.getElementById('billEditId').value));
+    if (!bill) return;
+    const name = document.getElementById('billEditName').value.trim();
+    const amount = Number(document.getElementById('billEditAmount').value);
+    const dueDate = document.getElementById('billEditDueDate').value;
+    const categoryId = document.getElementById('billEditCategory').value;
+    if (!name || !dueDate || !Number.isFinite(amount) || amount <= 0 || !category(categoryId)) {
+      return toast('Please enter a valid reminder name, category, amount, and due date.');
+    }
+    Object.assign(bill, {
+      name, amount, dueDate, category: categoryId,
+      priority: document.getElementById('billEditPriority').value,
+      repeat: document.getElementById('billEditRepeat').value,
+      reminderLeadDays: Number(document.getElementById('billEditReminderLead').value),
+      note: document.getElementById('billEditNote').value.trim(),
+      updatedAt: Date.now()
+    });
+    save(); render();
+    document.getElementById('billEditOverlay').hidden = true;
+    toast('Reminder updated successfully.');
+  });
+
   function openWishEditor(wishId) {
     const wish = state.wishes.find(item => String(item.id) === String(wishId));
     if (!wish) return;
@@ -2502,7 +2859,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   });
   initializeThemeSettings();
   document.getElementById('resetAllDataBtn')?.addEventListener('click', async () => {
-    const confirmed = await showConfirm('Reset ALL PesoPlan tracker data? This clears balances, categories back to defaults, reminders and reminder lists, wishlist items, transactions, reports, and paid history. If you are signed in, the reset will also sync to your cloud account. This cannot be undone unless you have a backup.');
+    const confirmed = await showConfirm('Reset ALL EUnify tracker data? This clears balances, categories back to defaults, reminders and reminder lists, wishlist items, transactions, reports, and paid history. If you are signed in, the reset will also sync to your cloud account. This cannot be undone unless you have a backup.');
     if (!confirmed) return;
     const now = Date.now();
     const oldCategories = Array.isArray(CATEGORIES) ? CATEGORIES : [];
@@ -2528,6 +2885,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
     state = {
       categories: CATEGORIES,
+      themeId: 1,
+      themeUpdatedAt: now,
+      guideBubbleEnabled: state.guideBubbleEnabled !== false,
+      guideBubbleUpdatedAt: Number(state.guideBubbleUpdatedAt || 0),
       balances: blankBalances(),
       transactions: [],
       wishes: [],
@@ -2551,13 +2912,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     reportSelectedMonth = null;
     reportSelectedDay = null;
     applyTheme(1, true);
+    updateGuideBubbleSettingUI();
     save();
     render();
     renderCategorySettings();
     refreshReminderGroupSelect();
     const reportYear = document.getElementById('reportYear');
     if (reportYear) reportYear.value = String(new Date().getFullYear());
-    toast('PesoPlan has been reset. Your reset will sync when cloud connection is available.');
+    toast('EUnify has been reset. Your reset will sync when cloud connection is available.');
   });
   document.getElementById('recentActivityMoreBtn')?.addEventListener('click', () => {
     showAllRecentTransactions = !showAllRecentTransactions;
@@ -2629,6 +2991,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       }
       state.transactions = state.transactions.filter(x => x.id !== t.id); save(); render(); toast('Transaction deleted and balance adjusted.');
     }
+    const editB = e.target.closest('[data-edit-bill]');
+    if (editB) { openBillEditor(editB.dataset.editBill); return; }
     const editW = e.target.closest('[data-edit-wish]');
     if (editW) { openWishEditor(editW.dataset.editWish); return; }
     const delW = e.target.closest('[data-delete-wish]');
@@ -2749,7 +3113,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     const periodIncome = report.transactions.filter(t => t.type === 'income').reduce((sum,t) => sum + Number(t.amount || 0), 0);
     const periodExpenses = report.transactions.filter(t => t.type === 'expense').reduce((sum,t) => sum + Number(t.amount || 0), 0);
     const lines = [
-      ['PesoPlan Financial Report'],
+      ['EUnify Financial Report'],
       ['Period', report.label],
       ['Generated',new Date().toLocaleString()],
       [],
@@ -2766,7 +3130,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       .forEach(t => lines.push([t.date,t.type,t.note || '',t.category ? category(t.category)?.name : 'All categories',Number(t.amount || 0).toFixed(2)]));
     const csv = '\\uFEFF' + lines.map(row => row.map(csvCell).join(',')).join('\\r\\n');
     const filenamePeriod = report.label.toLowerCase().replace(/\s+/g,'-');
-    downloadBlob(csv,`pesoplan-report-${filenamePeriod}.csv`,'text/csv;charset=utf-8;');
+    downloadBlob(csv,`eunify-report-${filenamePeriod}.csv`,'text/csv;charset=utf-8;');
     toast('CSV report downloaded.');
   });
   function downloadBlob(content, filename, type) { const blob = new Blob([content],{type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url); }
@@ -2779,7 +3143,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       .map(t => `<tr><td>${escapeHTML(t.date || '')}</td><td>${escapeHTML(t.type || '')}</td><td>${escapeHTML(t.note || '')}</td><td>${escapeHTML(t.category ? category(t.category)?.name || '' : 'All categories')}</td><td>${peso(t.amount)}</td></tr>`).join('');
     const printWindow = window.open('', '_blank');
     if (!printWindow) { toast('Please allow pop-ups to print this report.'); return; }
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>PesoPlan ${report.mode} report - ${escapeHTML(report.label)}</title><style>
+    printWindow.document.write(`<!DOCTYPE html><html><head><title>EUnify ${report.mode} report - ${escapeHTML(report.label)}</title><style>
       body{font-family:Arial,sans-serif;color:#24332d;padding:28px}h1{margin:0 0 5px;color:#315c4c}
       .muted{color:#68766e;font-size:12px}.totals{display:flex;gap:30px;margin:24px 0}
       .total{padding:14px;border:1px solid #dfe5dc;border-radius:10px;min-width:180px}
@@ -2795,7 +3159,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .bill-preview-stack .bill-preview-card:nth-child(2) { z-index:2; }
 .bill-preview-stack .bill-preview-card:nth-child(3) { z-index:1; }
 </style>
-</head><body><h1>PesoPlan</h1><div class="muted">Financial report · ${escapeHTML(report.label)}</div>
+</head><body><h1>EUnify</h1><div class="muted">Financial report · ${escapeHTML(report.label)}</div>
       <div class="totals"><div class="total"><small>Money received</small><strong>${peso(income)}</strong></div><div class="total"><small>Expenses</small><strong>${peso(expenses)}</strong></div><div class="total"><small>Net for period</small><strong>${peso(income-expenses)}</strong></div></div>
       <p class="muted">${report.transactions.length} transactions · Generated ${new Date().toLocaleString()}</p>
       <h2>Transactions</h2><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No transactions recorded for this period.</td></tr>'}</tbody></table>
@@ -2804,7 +3168,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     printWindow.focus();
     printWindow.print();
   });
-  document.getElementById('backupBtn').addEventListener('click', () => { downloadBlob(JSON.stringify({app:'PesoPlan',version:1,exportedAt:new Date().toISOString(),...state,bills:state.bills || []},null,2),'pesoplan-backup-'+today()+'.json','application/json'); toast('Backup exported.'); });
+  document.getElementById('backupBtn').addEventListener('click', () => { downloadBlob(JSON.stringify({app:'EUnify',version:1,exportedAt:new Date().toISOString(),...state,bills:state.bills || []},null,2),'eunify-backup-'+today()+'.json','application/json'); toast('Backup exported.'); });
   document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('restoreFile').click());
   document.getElementById('restoreFile').addEventListener('change', async e => {
     const file = e.target.files[0]; if (!file) return;
@@ -2812,8 +3176,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       const data = JSON.parse(await file.text());
       if (!data.balances || !Array.isArray(data.transactions) || !Array.isArray(data.wishes)) throw new Error('Invalid backup');
       if (!await showConfirm('Import this backup? It will replace the data currently saved in this browser.')) return;
-      if (Array.isArray(data.categories) && data.categories.length) CATEGORIES = data.categories.map(c=>({...c})); state = {categories:CATEGORIES,themeId:Number(data.themeId || state.themeId || 1),themeUpdatedAt:Number(data.themeUpdatedAt || Date.now()),reminderGroups:Array.isArray(data.reminderGroups)&&data.reminderGroups.length?data.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})),balances:{...blankBalances(),...data.balances},transactions:data.transactions,wishes:data.wishes,bills:Array.isArray(data.bills)?data.bills:[],paidBills:Array.isArray(data.paidBills)?data.paidBills:[]}; applyTheme(state.themeId,false); save(); render(); toast('Backup imported successfully.');
-    } catch (err) { toast('Could not import this file. Please choose a valid PesoPlan backup.'); }
+      if (Array.isArray(data.categories) && data.categories.length) CATEGORIES = data.categories.map(c=>({...c})); state = {categories:CATEGORIES,themeId:Number(data.themeId || state.themeId || 1),themeUpdatedAt:Number(data.themeUpdatedAt || Date.now()),guideBubbleEnabled:data.guideBubbleEnabled === undefined ? state.guideBubbleEnabled !== false : data.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(data.guideBubbleUpdatedAt || state.guideBubbleUpdatedAt || 0),reminderGroups:Array.isArray(data.reminderGroups)&&data.reminderGroups.length?data.reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})),balances:{...blankBalances(),...data.balances},transactions:data.transactions,wishes:data.wishes,bills:Array.isArray(data.bills)?data.bills:[],paidBills:Array.isArray(data.paidBills)?data.paidBills:[]}; applyTheme(state.themeId,false); updateGuideBubbleSettingUI(); save(); render(); toast('Backup imported successfully.');
+    } catch (err) { toast('Could not import this file. Please choose a valid EUnify backup.'); }
     e.target.value='';
   });
   document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -2861,11 +3225,357 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 })();
 </script>
 
+
+<script>
+(() => {
+  // The welcome acknowledgement is intentionally device/browser-local, not cloud-synced.
+  const welcomeKey = 'pesoplan-guide-welcome-seen-v1';
+  const bubble = document.getElementById('guideBubble');
+  const menu = document.getElementById('guideMenu');
+  const list = document.getElementById('guideFeatureList');
+  const welcome = document.getElementById('guideWelcomeOverlay');
+  const explanation = document.getElementById('guideExplanationOverlay');
+  const title = document.getElementById('guideExplanationTitle');
+  const description = document.getElementById('guideExplanationText');
+  const explanationImageFrame = document.getElementById('guideExplanationImageFrame');
+  const explanationImage = document.getElementById('guideExplanationImage');
+  const stepControls = document.getElementById('guideStepControls');
+  const stepPrevious = document.getElementById('guideStepPrevious');
+  const stepNext = document.getElementById('guideStepNext');
+  const stepCount = document.getElementById('guideStepCount');
+  let activeFeatureSteps = [];
+  let activeStepIndex = 0;
+  const bubbleLogo = document.getElementById('guideBubbleLogo');
+  if (!bubble || !menu || !list || !welcome || !explanation || !explanationImageFrame || !explanationImage) return;
+
+  let hasSeenWelcome = false;
+  try { hasSeenWelcome = localStorage.getItem(welcomeKey) === '1'; } catch (_) {}
+
+  const guideIsEnabled = () => document.documentElement.dataset.guideBubbleEnabled !== 'false';
+  function syncGuideLogo() {
+    const themeId = Number(document.body.dataset.theme || 1);
+    bubbleLogo.onerror = () => { bubbleLogo.onerror = null; bubbleLogo.src = 'logos/1.png'; };
+    bubbleLogo.src = `logos/${themeId}.png`;
+  }
+  function setBubbleEnabled(enabled) {
+    if (!enabled) {
+      bubble.hidden = true;
+      menu.hidden = true;
+      welcome.hidden = true;
+      explanation.hidden = true;
+      bubble.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    if (!hasSeenWelcome) {
+      bubble.hidden = true;
+      welcome.hidden = false;
+    } else {
+      welcome.hidden = true;
+      bubble.hidden = false;
+    }
+  }
+  syncGuideLogo();
+  new MutationObserver(syncGuideLogo).observe(document.body, {attributes:true, attributeFilter:['data-theme']});
+  window.addEventListener('pesoplan:guide-preference-changed', event => {
+    setBubbleEnabled(Boolean(event.detail?.enabled));
+  });
+
+  const features = [
+    {
+      name:'Sign In', title:"Let's get you signed in!", target:'cloudAccountBtn', activate:true,
+      steps:[
+        {
+          text:"Want to access your EUnify account? Start by signing in using your registered email address and password. If you are new here, you can create an account to get started.",
+          image:'instruction-images/sign-in.png',
+          imageAlt:'Sign in and cloud account screen in EUnify'
+        },
+        {
+          text:'Click "Confirm email address" to verify your registered email address. Once your email is confirmed, go back to EUnify and click Sign in.',
+          image:'instruction-images/sign-in2.png',
+          imageAlt:'Confirm email address screen'
+        },
+        {
+          text:'After signing in, EUnify can synchronize your supported budget records with your cloud account. This lets you access your account on another device while keeping an offline copy on your device.',
+          imageAlt:'EUnify cloud synchronization process'
+        }
+      ]
+    },
+    {
+      name:'Settings', title:'Make EUnify yours!', target:'openAppSettingsBtn', activate:true,
+      text:"Everyone has their own preferences, and you can personalize EUnify to match yours!\n\nHead over to Settings to explore the available website themes, choose the look you like, and apply it. You can also show or hide the floating instruction guide whenever you want.\n\nNeed to manage your tracker data? You'll also find reset options here. Just remember to read each confirmation carefully before proceeding, especially when resetting your data.\n\nYour theme and guide preferences are saved by EUnify, so you can enjoy your preferred setup!",
+      imageAlt:'EUnify settings screen and theme options'
+    },
+    {
+      name:'Available Capital', title:"Here's how much you have available!", target:'availableCapitalSection',
+      text:"Want to know how much money you currently have left? You can find it right here!\n\nAvailable Capital gives you a quick overview of the money remaining in your budget. As you record money received, expenses, and payments, your available balance automatically changes to reflect your latest records.\n\nMake it a habit to check this section before adding a new expense. That way, you'll always have a better idea of how much money you have available across your budget categories.",
+      image:'instruction-images/available-capital.png', imageAlt:'Available Capital summary in EUnify'
+    },
+    {
+      name:'Reminders', title:'Never miss a payment!', target:'billsSection',
+      steps:[
+        {
+          text:"Have bills, subscriptions, school expenses, or other payments to take care of? Let EUnify help you remember them!\n\nSimply add a reminder by providing its name, amount, category, due date, and priority. You can keep track of upcoming payments and easily see which ones still need your attention.\n\nOnce you've settled a payment, just mark it as paid. EUnify will record it in your Paid History and update the related budget balance.\n\nStay organized, keep track of your payments, and worry less about forgetting important due dates!",
+          image:'instruction-images/reminders.png',
+          imageAlt:'EUnify reminders and upcoming payment list'
+        },
+        {
+          text:"Need to make changes to a reminder? No problem! Just tap the reminder section, Find the reminder you want to update and click the Edit button or settings icon. You can modify its name, amount, category, due date, or priority. Once you've made your changes, save them to keep your reminder updated.",
+          image:'instruction-images/reminders2.png',
+          imageAlt:'Editing a reminder in EUnify'
+        }
+      ]
+    },
+    {
+      name:'Add Money Received', title:"Got some money? Let's add it!", target:'incomeForm',
+      text:"Received your allowance, salary, a gift, refund, or some extra cash? Don't forget to record it in EUnify!\n\nEnter the amount you received and the date, then choose where you'd like the money to go.\n\nYou have two options:\n\n• All Categories: Distribute your money automatically using your saved allocation percentages.\n• One Category: Put the entire amount into a single category of your choice.\n\nYou can also include the source of the money or add a note to keep your records more organized.\n\nOnce everything looks good, submit the form, and your available capital will be updated!",
+      image:'instruction-images/add-money-received.png', imageAlt:'Add Money Received form in EUnify'
+    },
+    {
+      name:'Add an Expense', title:"Spent some money? Let's keep track!", target:'expenseForm',
+      text:"Every purchase counts, so let's make sure you keep track of where your money goes!\n\nWhenever you spend money, head over to Add an Expense and enter a short description, the amount, and the date of your purchase. Then, select the category where the money came from.\n\nBefore saving, double-check that you've selected the correct category and entered the right amount.\n\nOnce saved, your expense will automatically be included in your budget totals and appear in Recent Activities.\n\nKeeping track of your spending helps you understand your habits and make smarter budgeting decisions!",
+      image:'instruction-images/add-expense.png', imageAlt:'Add an Expense form in EUnify'
+    },
+	{
+  name:'Categories',
+  title:'Give your money a place!',
+  target:'categorySettingsToggle',
+  activate:true,
+  steps:[
+    {
+      text:"Want to keep your budget organized? That's what Categories are for!\n\nThink of each category as a separate space for your money. You can organize your budget into groups such as Food, Transportation, School, Savings, and more.\n\nCheck each category to see how much money you have available. You can also open the category settings to add new categories, rename existing ones, or adjust how your money is distributed.\n\nOne important thing to remember: Make sure your allocation percentages add up to exactly 100% before saving your changes.\n\nThat way, every peso has a place in your budget!",
+      image:'instruction-images/categories.png',
+      imageAlt:'EUnify category balances and category settings'
+    },
+    {
+      text:"Need to make changes to your categories? No problem! Simply open the category settings to manage them. You can change a category's name, adjust its allocation percentage, or choose a different icon to personalize it.",
+      image:'instruction-images/categories2.png',
+      imageAlt:'Editing category names, allocation percentages, and icons'
+    },
+    {
+      text:"Thinking of deleting a category? Before proceeding, you'll need to select another category where its remaining balance, wishlist items, expenses, and related records will be transferred.\n\nMake sure to choose the correct category so your budget records remain organized!",
+      image:'instruction-images/categories3.png',
+      imageAlt:'Selecting another category when deleting a category'
+    }
+  ]
+},
+    {
+      name:'Wishlist', title:'Dream it, plan it, save for it!', target:'shoppingToggle', activatePanel:'shoppingPanel',
+      text:"Have something you've been wanting to buy? Add it to your Wishlist!\n\nWhether it's a new gadget, school supplies, personal items, or something special you've been saving for, your Wishlist helps you keep track of your planned purchases.\n\nSimply enter the item's name, category, estimated price, and priority. You can update the estimated price whenever it changes and check your list to see which goals you're working toward.\n\nWhen you're finally ready to purchase an item, follow the app's purchase flow so the amount is properly reflected in the appropriate budget category.\n\nA little planning today can help you reach your goals tomorrow!",
+      image:'instruction-images/wishlist.png', imageAlt:'EUnify wishlist items and estimated costs'
+    },
+    {
+  name:'Reports and Data',
+  title:"Let's take a look at your financial progress!",
+  target:'reportsToggle',
+  activatePanel:'reportsPanel',
+  steps:[
+    {
+      text:"Curious about how you've been managing your money? Reports and Data is here to help!\n\nStart with the Yearly Report to get an overview of your financial progress throughout the selected year. You can review your total money received, expenses, and other recorded budget activities.\n\nIt's a great way to see how you've managed your finances over time!",
+      image:'instruction-images/reports-data.png',
+      imageAlt:'EUnify yearly financial report and summary'
+    },
+    {
+      text:"Want to take a closer look at your finances throughout the year? The All Months view lets you explore your financial records month by month.\n\nYou can compare your activities across different months and see how your income and expenses change over time.\n\nThis makes it easier to identify spending patterns and understand your financial progress throughout the year!",
+      image:'instruction-images/reports-data2.png',
+      imageAlt:'EUnify all months financial report overview'
+    },
+    {
+      text:"Need a more specific breakdown? Select the Monthly Report to view your financial activities for a particular month.\n\nThis allows you to review the money you've received, your expenses, and other recorded transactions within your selected month.\n\nUse this view to keep track of your monthly budget and see where your money goes!",
+      image:'instruction-images/reports-data3.png',
+      imageAlt:'EUnify monthly financial report and transaction summary'
+    },
+    {
+      text:"Looking for a specific day's financial activities? The Daily Report lets you focus on your records for a selected date.\n\nYou can review the transactions recorded on that particular day, making it easier to check your daily spending and money received.\n\nIt's especially helpful when you want to double-check a transaction or keep track of your day-to-day expenses!",
+      image:'instruction-images/reports-data4.png',
+      imageAlt:'EUnify daily financial report and transactions'
+    },
+    {
+      text:"Need a copy of your financial records? You can download a CSV report, print or save a PDF, or export a backup of your data.\n\nHere's a friendly reminder: Keep a backup somewhere safe, especially before switching devices or clearing your browser data. It's always better to have an extra copy of your important records!",
+      imageAlt:'EUnify report export and data backup options'
+    }
+  ]
+},
+    {
+      name:'Recent Activities', title:'Keep an eye on your latest transactions!', target:'activityToggle', activatePanel:'activityPanel',
+      text:"Want to double-check your recent spending or money received? You can find your recorded transactions right here!\n\nRecent Activities keeps your latest money received and expenses in one convenient place, with the newest transactions appearing first.\n\nYou can review important details such as the date, transaction type, description, category, and amount to make sure everything is recorded correctly.\n\nLooking for an older transaction? Simply select View more transactions to browse previous activities when available.\n\nIt's an easy way to stay updated and keep your budget records in check!",
+      image:'instruction-images/recent-activities.png', imageAlt:'EUnify recent activities transaction list'
+    },
+    {
+      name:'Paid History', title:"Already paid? We've got it recorded!", target:'paidBillsSection',
+      text:"Wondering which bills or expenses you've already settled? You can check them here!\n\nPaid History keeps a record of reminders and expenses that you've marked as paid, making it easier to review your completed payments whenever you need to.\n\nWant to find a specific payment? Use the category filter to narrow down your list, then select a bill or expense name to review its payment history.\n\nThis way, you can keep track of what you've already paid, stay organized, and avoid accidentally paying for something twice.",
+      image:'instruction-images/paid-history.png', imageAlt:'EUnify paid history list with completed payments'
+    }
+  ];
+
+  features.forEach(feature => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = feature.name;
+    button.addEventListener('click', () => openFeature(feature));
+    list.appendChild(button);
+  });
+
+  function renderInstructionStep() {
+    const step = activeFeatureSteps[activeStepIndex];
+    if (!step) return;
+    description.textContent = step.text || '';
+    explanationImageFrame.hidden = !step.image;
+    if (step.image) {
+      explanationImage.alt = step.imageAlt || 'Instruction visual';
+      explanationImage.onerror = () => { explanationImageFrame.hidden = true; };
+      explanationImage.src = step.image;
+    }
+    const multiple = activeFeatureSteps.length > 1;
+    stepControls.hidden = !multiple;
+    if (multiple) {
+      stepCount.textContent = `Step ${activeStepIndex + 1} of ${activeFeatureSteps.length}`;
+      stepPrevious.disabled = activeStepIndex === 0;
+      stepNext.disabled = activeStepIndex === activeFeatureSteps.length - 1;
+    }
+  }
+
+  function showExplanation(feature) {
+    title.textContent = feature.title || feature.name;
+    activeFeatureSteps = Array.isArray(feature.steps) && feature.steps.length
+      ? feature.steps
+      : [{ text: feature.text || '', image: feature.image || '', imageAlt: feature.imageAlt || '' }];
+    activeStepIndex = 0;
+    renderInstructionStep();
+    explanation.hidden = false;
+
+    const guideDialog = explanation.querySelector('.guide-dialog');
+    const gotItButton = document.getElementById('guideExplanationGotIt');
+    if (guideDialog) guideDialog.scrollTop = 0;
+    gotItButton?.focus({ preventScroll: true });
+    if (guideDialog) guideDialog.scrollTop = 0;
+  }
+
+  stepPrevious.addEventListener('click', () => {
+    if (activeStepIndex > 0) {
+      activeStepIndex--;
+      renderInstructionStep();
+      const dialog = explanation.querySelector('.guide-dialog');
+      if (dialog) dialog.scrollTop = 0;
+    }
+  });
+  stepNext.addEventListener('click', () => {
+    if (activeStepIndex < activeFeatureSteps.length - 1) {
+      activeStepIndex++;
+      renderInstructionStep();
+      const dialog = explanation.querySelector('.guide-dialog');
+      if (dialog) dialog.scrollTop = 0;
+    }
+  });
+
+  function openFeature(feature) {
+    menu.hidden = true;
+    bubble.setAttribute('aria-expanded', 'false');
+    const target = feature.target ? document.getElementById(feature.target) : null;
+    if (target) {
+      if (feature.activatePanel) {
+        const panel = document.getElementById(feature.activatePanel);
+        if (panel && panel.hidden) target.click();
+      } else if (feature.target === 'categorySettingsToggle') {
+        const panel = document.getElementById('categorySettingsPanel');
+        if (panel && panel.hidden) target.click();
+      } else if (feature.activate) {
+        target.click();
+      }
+      target.scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    window.setTimeout(() => showExplanation(feature), 350);
+  }
+
+  document.getElementById('guideWelcomeGotIt').addEventListener('click', () => {
+    welcome.hidden = true;
+    hasSeenWelcome = true;
+    try { localStorage.setItem(welcomeKey, '1'); } catch (_) {}
+    bubble.hidden = !guideIsEnabled();
+    if (!bubble.hidden) bubble.focus();
+  });
+  document.getElementById('guideExplanationGotIt').addEventListener('click', () => {
+    explanation.hidden = true;
+  });
+
+  function positionGuideMenu() {
+    const rect = bubble.getBoundingClientRect();
+    const menuHeight = menu.getBoundingClientRect().height || Math.min(menu.scrollHeight, window.innerHeight * .62);
+    const idealTop = rect.top + rect.height / 2 - menuHeight / 2;
+    const maxTop = Math.max(8, window.innerHeight - menuHeight - 8);
+    menu.style.top = Math.max(8, Math.min(idealTop, maxTop)) + 'px';
+  }
+  bubble.addEventListener('click', () => {
+    if (bubble.dataset.justDragged === '1') return;
+    menu.hidden = !menu.hidden;
+    bubble.setAttribute('aria-expanded', String(!menu.hidden));
+    if (!menu.hidden) positionGuideMenu();
+  });
+  window.addEventListener('resize', () => {
+    if (!menu.hidden) positionGuideMenu();
+    const maxTop = Math.max(0, window.innerHeight - bubble.offsetHeight);
+    const currentTop = parseFloat(bubble.style.top || getComputedStyle(bubble).top) || 90;
+    if (currentTop > maxTop) bubble.style.top = `${maxTop}px`;
+  });
+
+  // Vertical drag only: the horizontal position is locked to the far-right screen edge.
+  let dragging = false, dragged = false, startY = 0, startTop = 0, pointerId = null;
+  bubble.addEventListener('pointerdown', event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    dragging = true;
+    dragged = false;
+    pointerId = event.pointerId;
+    startY = event.clientY;
+    startTop = bubble.getBoundingClientRect().top;
+    bubble.setPointerCapture(pointerId);
+  });
+  bubble.addEventListener('pointermove', event => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    const delta = event.clientY - startY;
+    if (Math.abs(delta) > 5) dragged = true;
+    if (dragged) {
+      const maxTop = Math.max(0, window.innerHeight - bubble.offsetHeight);
+      const nextTop = Math.min(maxTop, Math.max(0, startTop + delta));
+      bubble.style.top = `${nextTop}px`;
+      if (!menu.hidden) positionGuideMenu();
+    }
+  });
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (dragged) {
+      bubble.dataset.justDragged = '1';
+      window.setTimeout(() => { delete bubble.dataset.justDragged; dragged = false; }, 100);
+    }
+    pointerId = null;
+  };
+  bubble.addEventListener('pointerup', stopDrag);
+  bubble.addEventListener('pointercancel', stopDrag);
+
+  document.addEventListener('click', event => {
+    if (!menu.hidden && !menu.contains(event.target) && !bubble.contains(event.target)) {
+      menu.hidden = true;
+      bubble.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      menu.hidden = true;
+      explanation.hidden = true;
+      bubble.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  setBubbleEnabled(guideIsEnabled());
+})();
+</script>
+
 <script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js")
-      .catch(error => console.error("PesoPlan offline setup failed:", error));
+      .catch(error => console.error("EUnify offline setup failed:", error));
   });
 }
 </script>
