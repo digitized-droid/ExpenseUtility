@@ -1349,8 +1349,9 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     <form id="billEditForm">
       <p class="panel-desc">Update the reminder details whenever the amount, due date, or schedule changes.</p>
       <input type="hidden" id="billEditId">
+      <div class="field"><label for="billEditType">Reminder type</label><select id="billEditType"><option value="expense">Pay money</option><option value="income">Receive money</option></select></div>
       <div class="field"><label for="billEditName">Reminder name</label><input id="billEditName" maxlength="80" required></div>
-      <div class="field"><label for="billEditCategory">Deduct from category</label><select id="billEditCategory" required></select></div>
+      <div class="field"><label for="billEditCategory" id="billEditCategoryLabel">Deduct from category</label><select id="billEditCategory" required></select></div>
       <div class="field"><label for="billEditAmount">Amount (₱)</label><input id="billEditAmount" type="number" min="0.01" step="0.01" required></div>
       <div class="field"><label for="billEditDueDate">Due date</label><input id="billEditDueDate" type="date" required></div>
       <div class="field"><label for="billEditPriority">Priority</label><select id="billEditPriority"><option>Urgent</option><option>High</option><option>Medium</option><option>Low</option></select></div>
@@ -2499,7 +2500,8 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     list.innerHTML = groups.map(c => {
       const items = visible.filter(w => w.category === c.id);
       return `<div class="wish-group"><div class="wish-group-title">${c.icon} ${escapeHTML(c.name)} <span>${items.length} item${items.length===1?'':'s'}</span></div>` +
-        items.map(w => `<div class="priority-item ${w.done?'done':''}"><input class="priority-check no-print" type="checkbox" aria-label="Mark ${escapeHTML(w.name)} as purchased" data-wish-check="${w.id}" ${w.done?'checked':''}><div class="buy-info"><div class="buy-name">${escapeHTML(w.name)}</div><div class="buy-meta">${w.done ? 'Purchased' : 'To buy'}${managing ? ` · ${w.priority} priority` : ''}</div></div><span class="buy-price">${peso(w.amount)}</span>${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit wishlist estimation" aria-label="Edit ${escapeHTML(w.name)} estimation" data-edit-wish="${w.id}"><span aria-hidden="true">✎</span><span>Edit</span></button><button class="icon-btn no-print" type="button" title="Remove item" aria-label="Remove ${escapeHTML(w.name)}" data-delete-wish="${w.id}">✕</button>` : ''}</div>`).join('') + '</div>';
+        items.map(w => `<div class="priority-item ${w.done?'done':''}"><input class="priority-check no-print" type="checkbox" aria-label="Mark ${escapeHTML(w.name)} as purchased" data-wish-check="${w.id}" ${w.done?'checked':''}><div class="buy-info"><div class="buy-name">${escapeHTML(w.name)}</div><div class="buy-meta">${w.done ? 'Purchased' : 'To buy'}${managing ? ` · ${w.priority} priority` : ''}</div></div><span class="buy-price">${peso(w.amount)}</span>
+${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit wishlist estimation" aria-label="Edit ${escapeHTML(w.name)} estimation" data-edit-wish="${w.id}"><span aria-hidden="true">✎</span><span>Edit</span></button><button class="icon-btn no-print" type="button" title="Remove item" aria-label="Remove ${escapeHTML(w.name)}" data-delete-wish="${w.id}">✕</button>` : ''}</div>`).join('') + '</div>';
     }).join('');
   }
   function escapeHTML(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
@@ -2729,16 +2731,36 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     state.wishes.push({id:makeId(), name, category:document.getElementById('wishCategory').value, amount:Number(document.getElementById('wishAmount').value)||0, priority:document.getElementById('wishPriority').value, done:false});
     save(); render(); e.target.reset(); toast('Added to your buy list.');
   });
+  function syncBillEditCategoryOptions(preferredValue) {
+    const type = document.getElementById('billEditType').value;
+    const categorySelect = document.getElementById('billEditCategory');
+    const label = document.getElementById('billEditCategoryLabel');
+    const isIncome = type === 'income';
+    label.textContent = isIncome ? 'Add to category' : 'Deduct from category';
+    categorySelect.innerHTML =
+      (isIncome ? '<option value="all">All Categories (distribute automatically)</option>' : '') +
+      CATEGORIES.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.icon || '')} ${escapeHTML(c.name)}</option>`).join('');
+    const requested = preferredValue == null ? '' : String(preferredValue);
+    if ([...categorySelect.options].some(option => option.value === requested)) {
+      categorySelect.value = requested;
+    } else if (isIncome) {
+      categorySelect.value = 'all';
+    } else {
+      categorySelect.value = CATEGORIES[0]?.id || '';
+    }
+  }
+  document.getElementById('billEditType').addEventListener('change', () => {
+    syncBillEditCategoryOptions(document.getElementById('billEditCategory').value);
+  });
   function openBillEditor(billId) {
     const bill = (state.bills || []).find(item => String(item.id) === String(billId));
     if (!bill || bill.paid) return;
     const overlay = document.getElementById('billEditOverlay');
-    const categorySelect = document.getElementById('billEditCategory');
-    categorySelect.innerHTML = CATEGORIES.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.icon || '')} ${escapeHTML(c.name)}</option>`).join('');
-    document.getElementById('billEditId').value = bill.id;
-    document.getElementById('billEditName').value = bill.name || '';
     const billGroup = (state.reminderGroups || []).find(g => g.id === (bill.reminderGroupId || 'default-reminders'));
-    document.getElementById('billEditCategory').value = bill.category || billGroup?.category || CATEGORIES[0]?.id || '';
+    document.getElementById('billEditId').value = bill.id;
+    document.getElementById('billEditType').value = bill.type === 'income' ? 'income' : 'expense';
+    syncBillEditCategoryOptions(bill.category || (bill.type === 'income' ? 'all' : billGroup?.category || CATEGORIES[0]?.id || ''));
+    document.getElementById('billEditName').value = bill.name || '';
     document.getElementById('billEditAmount').value = Number(bill.amount) || '';
     document.getElementById('billEditDueDate').value = bill.dueDate || '';
     document.getElementById('billEditPriority').value = bill.priority || 'Medium';
@@ -2757,12 +2779,14 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     const name = document.getElementById('billEditName').value.trim();
     const amount = Number(document.getElementById('billEditAmount').value);
     const dueDate = document.getElementById('billEditDueDate').value;
+    const type = document.getElementById('billEditType').value;
     const categoryId = document.getElementById('billEditCategory').value;
-    if (!name || !dueDate || !Number.isFinite(amount) || amount <= 0 || !category(categoryId)) {
+    const validCategory = type === 'income' && categoryId === 'all' ? true : !!category(categoryId);
+    if (!name || !dueDate || !Number.isFinite(amount) || amount <= 0 || !validCategory) {
       return toast('Please enter a valid reminder name, category, amount, and due date.');
     }
     Object.assign(bill, {
-      name, amount, dueDate, category: categoryId,
+      name, amount, dueDate, type, category: categoryId,
       priority: document.getElementById('billEditPriority').value,
       repeat: document.getElementById('billEditRepeat').value,
       reminderLeadDays: Number(document.getElementById('billEditReminderLead').value),
