@@ -1,11 +1,12 @@
 /* EUnify offline app shell for GitHub Pages. Keep this file beside index.html. */
-const CACHE_NAME = "pesoplan-shell-v14-index-owned-theme";
+const CACHE_NAME = "pesoplan-shell-v17-web-push";
 const APP_SHELL = [
   new URL("./", self.registration.scope).href,
   new URL("./index.html", self.registration.scope).href,
   new URL("./schedules.html", self.registration.scope).href,
   new URL("./manifest.webmanifest", self.registration.scope).href,
   new URL("./supabase-config.js", self.registration.scope).href,
+  new URL("./eunify-push.js", self.registration.scope).href,
   new URL("./logos/1.png", self.registration.scope).href,
   new URL("./instruction-images/sign-in.jpg", self.registration.scope).href,
   new URL("./instruction-images/settings.jpg", self.registration.scope).href,
@@ -103,5 +104,33 @@ self.addEventListener("fetch", event => {
     } catch (error) {
       return new Response("This EUnify resource is not cached yet.", { status: 503 });
     }
+  })());
+});
+
+// Server-delivered Web Push works even when no EUnify page is open.
+self.addEventListener("push", event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (_) { payload = { body: event.data?.text?.() || "You have an upcoming EUnify reminder." }; }
+  const title = payload.title || "EUnify reminder";
+  const options = {
+    body: payload.body || "You have an upcoming task or payment deadline.",
+    icon: new URL("./logos/1.png", self.registration.scope).href,
+    badge: new URL("./logos/1.png", self.registration.scope).href,
+    tag: payload.tag || "eunify-reminder",
+    renotify: false,
+    data: { url: payload.url || new URL("./index.html", self.registration.scope).href }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = event.notification.data?.url || new URL("./index.html", self.registration.scope).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("focus" in client) { await client.focus(); if ("navigate" in client) await client.navigate(target); return; }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(target);
   })());
 });

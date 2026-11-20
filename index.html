@@ -1160,7 +1160,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
               <div class="bill-form-grid">
                 <div class="field"><label for="billType">Reminder type</label><select id="billType"><option value="expense">Pay money</option><option value="income">Receive money</option></select></div><div class="field"><label for="billCategory">Category for this reminder</label><select id="billCategory"><option value="all">All Categories (distribute automatically)</option></select></div><div class="field full"><label for="billName">Name of reminder / bill / subscription</label><input id="billName" maxlength="80" placeholder="e.g. Internet, project deadline, subscription" required></div>
                 <div class="field"><label for="billAmount">Amount (₱)</label><input id="billAmount" type="number" min="0.01" step="0.01" placeholder="0.00" required></div>
-                <div class="field"><label for="billDueDate">Due date</label><input id="billDueDate" type="date" required></div>
+                <div class="field"><label for="billDueDate">Due date</label><input id="billDueDate" type="date" required></div><div class="field"><label for="billDueTime">Due time</label><input id="billDueTime" type="time" value="09:00" required></div>
                 <div class="field"><label for="billPriority">Payment priority</label><select id="billPriority"><option>Urgent</option><option>High</option><option selected>Medium</option><option>Low</option></select></div>
                 <div class="field"><label for="billRepeat">Repeat</label><select id="billRepeat"><option value="once">One-time event</option><option value="daily">Daily</option><option value="weekdays">Weekdays (Mon–Fri)</option><option value="weekly">Weekly</option><option value="monthly">Monthly (same date)</option><option value="yearly">Yearly</option></select></div>
                 <div class="field"><label for="billReminderLead">Show reminder</label><select id="billReminderLead"><option value="0">On the due date</option><option value="1">1 day before</option><option value="3">3 days before</option><option value="7">7 days before</option><option value="14">14 days before</option><option value="30" selected>30 days before</option><option value="60">60 days before</option><option value="90">90 days before</option></select></div>
@@ -1366,6 +1366,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             <button class="btn btn-primary" type="button" id="toggleGuideBubbleBtn" aria-pressed="true">Hide instruction bubble</button>
           </div>
         </section>
+        <section class="settings-subsection" aria-labelledby="pushNotificationSettingsTitle">
+          <div class="settings-subhead"><div><h4 id="pushNotificationSettingsTitle">Device push notifications</h4><p class="panel-desc">Receive reminders on this device even when EUnify is closed. Sign in and enable notifications on each device you use.</p></div></div>
+          <div class="settings-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <label style="display:flex;gap:8px;align-items:center"><input id="push24Enabled" type="checkbox" checked style="width:auto"> 24 hours before</label>
+            <label style="display:flex;gap:8px;align-items:center"><input id="push12Enabled" type="checkbox" checked style="width:auto"> 12 hours before</label>
+            <button class="btn btn-primary" type="button" id="enablePushFromSettings">Enable on this device</button>
+          </div>
+          <p class="settings-note" id="pushSettingsStatus" role="status">Push notifications require browser permission and one-time server setup.</p>
+          <p class="settings-note">Expense reminders also use their existing “Show reminder” interval. To-do activities use the 24-hour and 12-hour alerts. All alerts are calculated relative to the saved due date and time.</p>
+        </section>
         <section class="settings-subsection">
           <div class="settings-subhead"><div><h4>Reset EUnify data</h4><p class="panel-desc">Restore the default categories and clear reminders, wishlist items, transactions, balances, reports, and paid history.</p></div></div>
           <p class="settings-warning">This removes the current tracker records from this device and, when signed in, synchronizes the reset to your cloud account. Export a backup first if you may need these records later.</p>
@@ -1448,7 +1458,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       <div class="field"><label for="billEditName">Reminder name</label><input id="billEditName" maxlength="80" required></div>
       <div class="field"><label for="billEditCategory" id="billEditCategoryLabel">Deduct from category</label><select id="billEditCategory" required></select></div>
       <div class="field"><label for="billEditAmount">Amount (₱)</label><input id="billEditAmount" type="number" min="0.01" step="0.01" required></div>
-      <div class="field"><label for="billEditDueDate">Due date</label><input id="billEditDueDate" type="date" required></div>
+      <div class="field"><label for="billEditDueDate">Due date</label><input id="billEditDueDate" type="date" required></div><div class="field"><label for="billEditDueTime">Due time</label><input id="billEditDueTime" type="time" required></div>
       <div class="field"><label for="billEditPriority">Priority</label><select id="billEditPriority"><option>Urgent</option><option>High</option><option>Medium</option><option>Low</option></select></div>
       <div class="field"><label for="billEditRepeat">Repeat</label><select id="billEditRepeat"><option value="once">One-time event</option><option value="daily">Daily</option><option value="weekdays">Weekdays (Mon–Fri)</option><option value="weekly">Weekly</option><option value="monthly">Monthly (same date)</option><option value="yearly">Yearly</option></select></div>
       <div class="field"><label for="billEditReminderLead">Show reminder</label><select id="billEditReminderLead"><option value="0">On the due date</option><option value="1">1 day before</option><option value="3">3 days before</option><option value="7">7 days before</option><option value="14">14 days before</option><option value="30">30 days before</option><option value="60">60 days before</option><option value="90">90 days before</option></select></div>
@@ -1471,6 +1481,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     </div>
   </section>
 </div>
+<script src="eunify-push.js"></script>
 <script>
 (() => {
   const DEFAULT_CATEGORIES = [
@@ -1617,10 +1628,10 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
         if (!syncMeta.categoriesAt && JSON.stringify(CATEGORIES) !== JSON.stringify(DEFAULT_CATEGORIES)) syncMeta.categoriesAt = migratedAt;
         const migrateRecords = items => (Array.isArray(items) ? items : []).map(item =>
           item && item.id != null && !item.updatedAt ? {...item, updatedAt:migratedAt} : item);
-        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),guideBubbleEnabled:saved.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(saved.guideBubbleUpdatedAt || 0),sectionDisplay:saved.sectionDisplay || {},sectionDisplayUpdatedAt:Number(saved.sectionDisplayUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), schedules:migrateRecords(saved.schedules), deletedScheduleIds:Array.isArray(saved.deletedScheduleIds)?saved.deletedScheduleIds:[], deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
+        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),guideBubbleEnabled:saved.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(saved.guideBubbleUpdatedAt || 0),sectionDisplay:saved.sectionDisplay || {},notificationSettings:{notify24h:saved.notificationSettings?.notify24h !== false,notify12h:saved.notificationSettings?.notify12h !== false},sectionDisplayUpdatedAt:Number(saved.sectionDisplayUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), schedules:migrateRecords(saved.schedules), deletedScheduleIds:Array.isArray(saved.deletedScheduleIds)?saved.deletedScheduleIds:[], deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,guideBubbleEnabled:true,guideBubbleUpdatedAt:0,sectionDisplay:{},sectionDisplayUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), schedules:[], deletedScheduleIds:[], deletedTransactionIds:[] , deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,guideBubbleEnabled:true,guideBubbleUpdatedAt:0,sectionDisplay:{},notificationSettings:{notify24h:true,notify12h:true},sectionDisplayUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), schedules:[], deletedScheduleIds:[], deletedTransactionIds:[] , deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -1802,7 +1813,8 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       guideBubbleUpdatedAt: Math.max(Number(local.guideBubbleUpdatedAt || 0), Number(remote?.guideBubbleUpdatedAt || 0)),
       sectionDisplay: Number(local.sectionDisplayUpdatedAt || 0) > Number(remote?.sectionDisplayUpdatedAt || 0)
         ? {...(local.sectionDisplay || {})} : {...(remote.sectionDisplay || local.sectionDisplay || {})},
-      sectionDisplayUpdatedAt: Math.max(Number(local.sectionDisplayUpdatedAt || 0), Number(remote?.sectionDisplayUpdatedAt || 0))
+      sectionDisplayUpdatedAt: Math.max(Number(local.sectionDisplayUpdatedAt || 0), Number(remote?.sectionDisplayUpdatedAt || 0)),
+      notificationSettings: {...(remote.notificationSettings || local.notificationSettings || {notify24h:true,notify12h:true})}
     } : {
       ...local,
       transactions: [...transactionMap.values()],
@@ -1893,6 +1905,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       guideBubbleEnabled: remoteState.guideBubbleEnabled !== false,
       guideBubbleUpdatedAt: Number(remoteState.guideBubbleUpdatedAt || state.guideBubbleUpdatedAt || 0),
       sectionDisplay: remoteState.sectionDisplay && typeof remoteState.sectionDisplay === 'object' ? {...remoteState.sectionDisplay} : {...(state.sectionDisplay || {})},
+      notificationSettings: remoteState.notificationSettings && typeof remoteState.notificationSettings === 'object' ? {...remoteState.notificationSettings} : {...(state.notificationSettings || {notify24h:true,notify12h:true})},
       sectionDisplayUpdatedAt: Number(remoteState.sectionDisplayUpdatedAt || 0),
       reminderGroups: Array.isArray(remoteState.reminderGroups) && remoteState.reminderGroups.length ? remoteState.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g})),
       schedules: Array.isArray(remoteState.schedules) ? remoteState.schedules : (state.schedules || []),
@@ -2028,11 +2041,35 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     );
     const { data: { session } } = await cloudClient.auth.getSession();
     await activateCloudSession(session);
+    if (cloudUser && window.EUnifyPush) { renderPushSettings(); window.EUnifyPush.syncJobs(cloudClient, cloudUser.id, state).catch(console.warn); }
     cloudClient.auth.onAuthStateChange((_event, session) => {
       // Defer network work so the auth callback does not block Supabase's internal queue.
-      setTimeout(() => activateCloudSession(session), 0);
+      setTimeout(async () => { await activateCloudSession(session); if (cloudUser && window.EUnifyPush) { renderPushSettings(); window.EUnifyPush.syncJobs(cloudClient, cloudUser.id, state).catch(console.warn); } }, 0);
     });
   }
+
+  const push24 = document.getElementById('push24Enabled');
+  const push12 = document.getElementById('push12Enabled');
+  const pushStatus = document.getElementById('pushSettingsStatus');
+  function renderPushSettings() {
+    const prefs = state.notificationSettings || {notify24h:true,notify12h:true};
+    if (push24) push24.checked = prefs.notify24h !== false;
+    if (push12) push12.checked = prefs.notify12h !== false;
+    if (pushStatus && 'Notification' in window) pushStatus.textContent = Notification.permission === 'granted' ? 'This browser has granted notification permission. Enable it on every device you want to receive alerts on.' : 'Enable device notifications below. Your browser will ask for permission.';
+  }
+  [push24,push12].forEach(input => input?.addEventListener('change', () => {
+    state.notificationSettings = {notify24h:!!push24.checked, notify12h:!!push12.checked}; save();
+  }));
+  document.getElementById('enablePushFromSettings')?.addEventListener('click', async () => {
+    if (!cloudClient || !cloudUser) { pushStatus.textContent = 'Please sign in to your EUnify cloud account first.'; return; }
+    try {
+      pushStatus.textContent = 'Connecting this device…';
+      await window.EUnifyPush.enable(cloudClient, cloudUser.id);
+      await window.EUnifyPush.syncJobs(cloudClient, cloudUser.id, state);
+      pushStatus.textContent = 'This device is registered for push notifications. Keep your browser notifications enabled.';
+    } catch (err) { console.error(err); pushStatus.textContent = err.message || 'Could not enable push notifications. Check the setup instructions.'; }
+  });
+  renderPushSettings();
 
   document.getElementById('cloudAccountBtn').addEventListener('click', openCloudModal);
   if (new URLSearchParams(location.search).get('openAccount') === '1') { setTimeout(openCloudModal, 250); }
@@ -2142,6 +2179,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       const serialized = JSON.stringify(state);
       localStorage.setItem(KEY, serialized);
       lastSavedSnapshot = serialized;
+      if (cloudClient && cloudUser && window.EUnifyPush) window.EUnifyPush.syncJobs(cloudClient, cloudUser.id, state).catch(err=>console.warn('EUnify push schedule sync:',err));
       document.getElementById('saveStatus').textContent = cloudUser ? '● Saved on this device · syncing…' : '● Saved on this device';
       queueCloudSave();
     } catch (error) {
@@ -2413,7 +2451,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
         <div class="upcoming-reminder-main">
           <strong>${escapeHTML(b.name || 'Untitled reminder')}</strong>
           <span>${escapeHTML(groupName(b.reminderGroupId || 'default-reminders'))} · ${escapeHTML(b.priority || 'Medium')} priority</span>
-          <small>${formatBillDate(b.dueDate)} · ${timing}${b.repeat && b.repeat !== 'once' ? ' · Repeats '+escapeHTML(b.repeat) : ''}</small>
+          <small>${formatBillDate(b.dueDate)} at ${escapeHTML(b.dueTime || '09:00')} · ${timing}${b.repeat && b.repeat !== 'once' ? ' · Repeats '+escapeHTML(b.repeat) : ''}</small>
         </div>
         <strong class="upcoming-reminder-amount">${peso(b.amount)}</strong>
         <div class="upcoming-reminder-actions">
@@ -2479,7 +2517,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
           <span class="bill-preview-star">✦</span>
           <span class="bill-preview-main">
             <strong class="bill-preview-name">${escapeHTML(b.name)}</strong>
-            <small class="bill-preview-due">Due ${formatBillDate(b.dueDate)} · ${escapeHTML(b.priority || 'Medium')} priority</small>
+            <small class="bill-preview-due">Due ${formatBillDate(b.dueDate)} at ${escapeHTML(b.dueTime || '09:00')} · ${escapeHTML(b.priority || 'Medium')} priority</small>
           </span>
           <span class="bill-preview-amount">${peso(b.amount)}</span>
         </button>`).join('');
@@ -2519,7 +2557,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
                   <span class="bill-card-star">✦</span>
                   <div class="bill-card-main">
                     <div class="bill-card-name">${escapeHTML(b.name)}</div>
-                    <div class="bill-card-due">${b.type === 'income' ? 'Receive' : 'Pay'} · Due ${formatBillDate(b.dueDate)}</div>
+                    <div class="bill-card-due">${b.type === 'income' ? 'Receive' : 'Pay'} · Due ${formatBillDate(b.dueDate)} at ${escapeHTML(b.dueTime || '09:00')}</div>
                   </div>
                   <span class="bill-card-amount">${peso(b.amount)}</span>
                 </div>
@@ -2690,7 +2728,7 @@ ${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit w
     if (!reminderGroup) return toast('Open a reminder list first.');
     state.bills = state.bills || [];
     state.bills.push({
-      id:makeId(), name, amount, dueDate,
+      id:makeId(), name, amount, dueDate, dueTime:document.getElementById('billDueTime').value || '09:00',
       priority:document.getElementById('billPriority').value,
       repeat, reminderLeadDays,
       type:document.getElementById('billType').value,
@@ -2875,6 +2913,7 @@ ${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit w
     document.getElementById('billEditName').value = bill.name || '';
     document.getElementById('billEditAmount').value = Number(bill.amount) || '';
     document.getElementById('billEditDueDate').value = bill.dueDate || '';
+    document.getElementById('billEditDueTime').value = bill.dueTime || '09:00';
     document.getElementById('billEditPriority').value = bill.priority || 'Medium';
     document.getElementById('billEditRepeat').value = bill.repeat || 'once';
     document.getElementById('billEditReminderLead').value = String(bill.reminderLeadDays ?? 30);
@@ -2898,7 +2937,7 @@ ${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit w
       return toast('Please enter a valid reminder name, category, amount, and due date.');
     }
     Object.assign(bill, {
-      name, amount, dueDate, type, category: categoryId,
+      name, amount, dueDate, dueTime:document.getElementById('billEditDueTime').value || '09:00', type, category: categoryId,
       priority: document.getElementById('billEditPriority').value,
       repeat: document.getElementById('billEditRepeat').value,
       reminderLeadDays: Number(document.getElementById('billEditReminderLead').value),
