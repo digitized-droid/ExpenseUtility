@@ -727,6 +727,100 @@ td strong { font-size:11px; }
 }
 .section-display-blur{filter:blur(7px);opacity:.55;user-select:none;pointer-events:none}
 .section-display-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}.section-display-row select{max-width:190px}
+
+
+/* FINAL WISHLIST OVERRIDE: flat, compact checklist rows */
+#wishList.priority-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+#wishList .wish-group {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#wishList .wish-group + .wish-group {
+  margin-top: 12px !important;
+}
+#wishList .wish-group-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin: 0 0 3px !important;
+  padding: 0 2px 4px !important;
+}
+#wishList .priority-item,
+#wishList .priority-item.done {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 6px 4px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#wishList .priority-item:last-child {
+  border-bottom: 0 !important;
+}
+#wishList .priority-item.done {
+  opacity: .55 !important;
+}
+#wishList .priority-check {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 2px 0 0 !important;
+  flex: 0 0 16px !important;
+}
+#wishList .buy-info {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+#wishList .buy-name {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+#wishList .buy-meta {
+  margin-top: 1px !important;
+  font-size: 10px !important;
+}
+#wishList .buy-price {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  padding-left: 8px !important;
+  font-size: 12px !important;
+}
+#wishList .wish-edit-btn,
+#wishList .icon-btn {
+  flex: 0 0 auto !important;
+}
+#wishCategoryTabs {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  margin-bottom: 10px !important;
+}
+#wishCategoryTabs button {
+  cursor: pointer !important;
+}
+@media (max-width: 520px) {
+  #wishList .priority-item {
+    flex-wrap: nowrap !important;
+    padding: 7px 2px !important;
+  }
+  #wishList .buy-info {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  #wishList .buy-price {
+    margin-left: auto !important;
+    padding-left: 5px !important;
+  }
+}
+
 </style>
 
 <meta name="theme-color" content="#315c4c">
@@ -1038,7 +1132,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <div id="app">
   <header class="topbar">
     <div class="brand"><div class="brand-mark"><img src="logos/1.png" alt="EUnify logo"></div><div><h1>EUnify</h1><small>Your money, thoughtfully divided</small></div></div>
-    <div class="top-actions"><span class="pill">PERSONAL BUDGET</span><span id="saveStatus">● Saved on this device</span><button class="cloud-account-btn" id="cloudAccountBtn" type="button">☁ Connect account</button><button class="cloud-account-btn" id="openAppSettingsBtn" type="button" aria-haspopup="dialog">⚙ Settings</button></div>
+    <div class="top-actions"><a class="cloud-account-btn" href="schedules.html" style="text-decoration:none">▦ Schedules</a><span class="pill">PERSONAL BUDGET</span><span id="saveStatus">● Saved on this device</span><button class="cloud-account-btn" id="cloudAccountBtn" type="button">☁ Connect account</button><button class="cloud-account-btn" id="openAppSettingsBtn" type="button" aria-haspopup="dialog">⚙ Settings</button></div>
   </header>
   <main>
     <div class="welcome">
@@ -1139,7 +1233,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
             <button class="btn btn-primary" type="submit">＋ Add</button>
           </form>
           <div class="field no-print" style="max-width:190px;margin-top:12px"><label for="wishPriority">Priority for next item</label><select id="wishPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
-          <div id="wishCategoryTabs" class="wish-category-tabs no-print"></div></div>
+          </div>
+          <div id="wishCategoryTabs" class="wish-category-tabs no-print" aria-label="Filter wishlist by category"></div>
           <div class="priority-list" id="wishList"></div>
         </div>
       </div>
@@ -1522,10 +1617,10 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
         if (!syncMeta.categoriesAt && JSON.stringify(CATEGORIES) !== JSON.stringify(DEFAULT_CATEGORIES)) syncMeta.categoriesAt = migratedAt;
         const migrateRecords = items => (Array.isArray(items) ? items : []).map(item =>
           item && item.id != null && !item.updatedAt ? {...item, updatedAt:migratedAt} : item);
-        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),guideBubbleEnabled:saved.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(saved.guideBubbleUpdatedAt || 0),sectionDisplay:saved.sectionDisplay || {},sectionDisplayUpdatedAt:Number(saved.sectionDisplayUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
+        return {categories:CATEGORIES,themeId:Number(saved.themeId || localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:Number(saved.themeUpdatedAt || 0),guideBubbleEnabled:saved.guideBubbleEnabled !== false,guideBubbleUpdatedAt:Number(saved.guideBubbleUpdatedAt || 0),sectionDisplay:saved.sectionDisplay || {},sectionDisplayUpdatedAt:Number(saved.sectionDisplayUpdatedAt || 0),balances:{...blankBalances(),...saved.balances}, transactions:migrateRecords(saved.transactions), wishes:migrateRecords(saved.wishes), bills:migrateRecords(saved.bills), paidBills:migrateRecords(saved.paidBills), reminderGroups:migrateRecords(saved.reminderGroups && saved.reminderGroups.length ? saved.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g}))), schedules:migrateRecords(saved.schedules), deletedScheduleIds:Array.isArray(saved.deletedScheduleIds)?saved.deletedScheduleIds:[], deletedTransactionIds:Array.isArray(saved.deletedTransactionIds)?saved.deletedTransactionIds:[], deletedBillIds:Array.isArray(saved.deletedBillIds)?saved.deletedBillIds:[], deletedWishIds:Array.isArray(saved.deletedWishIds)?saved.deletedWishIds:[], deletedReminderGroupIds:Array.isArray(saved.deletedReminderGroupIds)?saved.deletedReminderGroupIds:[], deletedPaidBillIds:Array.isArray(saved.deletedPaidBillIds)?saved.deletedPaidBillIds:[], deletedCategoryIds:Array.isArray(saved.deletedCategoryIds)?saved.deletedCategoryIds:[], _syncMeta:syncMeta};
       }
     } catch (e) {}
-    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,guideBubbleEnabled:true,guideBubbleUpdatedAt:0,sectionDisplay:{},sectionDisplayUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+    return {categories:CATEGORIES,themeId:Number(localStorage.getItem(THEME_KEY) || 1),themeUpdatedAt:0,guideBubbleEnabled:true,guideBubbleUpdatedAt:0,sectionDisplay:{},sectionDisplayUpdatedAt:0,balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[], reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), schedules:[], deletedScheduleIds:[], deletedTransactionIds:[] , deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
   }
   // Cloud sync uses one private JSON record per signed-in user.
   // Only the Supabase project URL and publishable/anon key belong in the browser.
@@ -1616,6 +1711,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     const deletedBillIds = ids('deletedBillIds');
     const deletedWishIds = ids('deletedWishIds');
     const deletedReminderGroupIds = ids('deletedReminderGroupIds');
+    const deletedScheduleIds = ids('deletedScheduleIds');
     const deletedPaidBillIds = ids('deletedPaidBillIds');
     const deletedCategoryIds = ids('deletedCategoryIds');
 
@@ -1686,6 +1782,8 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       bills: mergeByUpdatedAt(local.bills, remote.bills).filter(x => !deletedBillIds.has(String(x.id))),
       paidBills: mergeByUpdatedAt(local.paidBills, remote.paidBills).filter(x => !deletedPaidBillIds.has(String(x.id))),
       reminderGroups: mergeByUpdatedAt(local.reminderGroups, remote.reminderGroups).filter(x => !deletedReminderGroupIds.has(String(x.id))),
+      schedules: mergeByUpdatedAt(local.schedules, remote.schedules).filter(x => !deletedScheduleIds.has(String(x.id))),
+      deletedScheduleIds: [...deletedScheduleIds],
       deletedTransactionIds: [...deletedTransactionIds],
       deletedBillIds: [...deletedBillIds],
       deletedWishIds: [...deletedWishIds],
@@ -1797,6 +1895,8 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       sectionDisplay: remoteState.sectionDisplay && typeof remoteState.sectionDisplay === 'object' ? {...remoteState.sectionDisplay} : {...(state.sectionDisplay || {})},
       sectionDisplayUpdatedAt: Number(remoteState.sectionDisplayUpdatedAt || 0),
       reminderGroups: Array.isArray(remoteState.reminderGroups) && remoteState.reminderGroups.length ? remoteState.reminderGroups : DEFAULT_REMINDER_GROUPS.map(g=>({...g})),
+      schedules: Array.isArray(remoteState.schedules) ? remoteState.schedules : (state.schedules || []),
+      deletedScheduleIds: Array.isArray(remoteState.deletedScheduleIds) ? remoteState.deletedScheduleIds : [],
       balances: { ...blankBalances(), ...remoteState.balances },
       transactions: remoteState.transactions,
       wishes: remoteState.wishes,
@@ -1870,7 +1970,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
         CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
         try { localStorage.removeItem(THEME_KEY); } catch (e) {}
         state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, guideBubbleEnabled:true, guideBubbleUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
-          reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+          reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), schedules:[], deletedScheduleIds:[], deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
         updateGuideBubbleSettingUI();
       }
       try { localStorage.setItem(ownerKey, nextUser.id); } catch (e) {}
@@ -1935,6 +2035,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
   }
 
   document.getElementById('cloudAccountBtn').addEventListener('click', openCloudModal);
+  if (new URLSearchParams(location.search).get('openAccount') === '1') { setTimeout(openCloudModal, 250); }
   document.getElementById('cloudCloseBtn').addEventListener('click', closeCloudModal);
   cloudModal.addEventListener('click', event => { if (event.target === cloudModal) closeCloudModal(); });
 
@@ -1988,7 +2089,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       } catch (e) {}
       CATEGORIES = DEFAULT_CATEGORIES.map(c => ({...c}));
       state = {categories:CATEGORIES, themeId:1, themeUpdatedAt:0, guideBubbleEnabled:true, guideBubbleUpdatedAt:0, balances:blankBalances(), transactions:[], wishes:[], bills:[], paidBills:[],
-        reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
+        reminderGroups:DEFAULT_REMINDER_GROUPS.map(g=>({...g})), schedules:[], deletedScheduleIds:[], deletedTransactionIds:[], deletedBillIds:[], deletedWishIds:[], deletedReminderGroupIds:[], deletedPaidBillIds:[], deletedCategoryIds:[], _syncMeta:{}};
       updateGuideBubbleSettingUI();
       render();
       updateCloudAccountUI();
@@ -2019,7 +2120,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
           if (before.get(String(item.id)) !== JSON.stringify(item)) item.updatedAt = Math.max(now, Number(item.updatedAt || 0) + 1);
         });
       };
-      ['transactions','wishes','bills','paidBills','reminderGroups'].forEach(stampChanged);
+      ['transactions','wishes','bills','paidBills','reminderGroups','schedules'].forEach(stampChanged);
 
       const trackDeleted = (key, tombstoneKey) => {
         const currentIds = new Set((Array.isArray(state[key]) ? state[key] : []).filter(x=>x && x.id!=null).map(x=>String(x.id)));
@@ -2031,6 +2132,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       trackDeleted('bills','deletedBillIds');
       trackDeleted('paidBills','deletedPaidBillIds');
       trackDeleted('reminderGroups','deletedReminderGroupIds');
+      trackDeleted('schedules','deletedScheduleIds');
       const currentCategoryIds = new Set(CATEGORIES.map(c=>String(c.id)));
       state.deletedCategoryIds = Array.isArray(state.deletedCategoryIds) ? state.deletedCategoryIds : [];
       (previous.categories || []).filter(c=>c && c.id!=null && !currentCategoryIds.has(String(c.id)))
@@ -2488,15 +2590,25 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
     const tabs = document.getElementById('wishCategoryTabs');
     const sorted = [...state.wishes].sort((a,b) => Number(a.done)-Number(b.done) || ({High:0,Medium:1,Low:2}[a.priority] - {High:0,Medium:1,Low:2}[b.priority]));
     const counts = Object.fromEntries(CATEGORIES.map(c => [c.id, state.wishes.filter(w => w.category === c.id).length]));
-    tabs.innerHTML = `<button type="button" data-wish-filter="all" class="${selectedWishCategory==='all'?'active':''}">All (${state.wishes.length})</button>` +
-      CATEGORIES.filter(c => counts[c.id] > 0).map(c => `<button type="button" data-wish-filter="${c.id}" class="${selectedWishCategory===c.id?'active':''}">${c.icon} ${escapeHTML(c.name)} (${counts[c.id]})</button>`).join('');
+    const populatedCategories = CATEGORIES.filter(c => counts[c.id] > 0);
+    // If the selected category becomes empty, return to All instead of leaving a hidden category selected.
+    if (selectedWishCategory !== 'all' && !populatedCategories.some(c => c.id === selectedWishCategory)) {
+      selectedWishCategory = 'all';
+    }
+    tabs.innerHTML = (state.wishes.length
+      ? `<button type="button" data-wish-filter="all" class="${selectedWishCategory==='all'?'active':''}">All (${state.wishes.length})</button>`
+      : '') + populatedCategories.map(c =>
+        `<button type="button" data-wish-filter="${c.id}" class="${selectedWishCategory===c.id?'active':''}">${c.icon} ${escapeHTML(c.name)} (${counts[c.id]})</button>`
+      ).join('');
     const managing = !document.getElementById('wishManageArea')?.hidden;
     const visible = selectedWishCategory === 'all' ? sorted : sorted.filter(w => w.category === selectedWishCategory);
     if (!visible.length) {
-      list.innerHTML = '<div class="empty">No items in this category yet. Add something you are planning to buy.</div>';
+      list.innerHTML = selectedWishCategory === 'all'
+        ? '<div class="empty">Your shopping list is empty. Open Edit list to add something you are planning to buy.</div>'
+        : '<div class="empty">No items in this category yet. Add something you are planning to buy.</div>';
       return;
     }
-    const groups = selectedWishCategory === 'all' ? CATEGORIES.filter(c => visible.some(w => w.category === c.id)) : [category(selectedWishCategory)].filter(Boolean);
+    const groups = selectedWishCategory === 'all' ? populatedCategories : [category(selectedWishCategory)].filter(c => c && counts[c.id] > 0);
     list.innerHTML = groups.map(c => {
       const items = visible.filter(w => w.category === c.id);
       return `<div class="wish-group"><div class="wish-group-title">${c.icon} ${escapeHTML(c.name)} <span>${items.length} item${items.length===1?'':'s'}</span></div>` +

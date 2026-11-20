@@ -1,8 +1,9 @@
 /* EUnify offline app shell for GitHub Pages. Keep this file beside index.html. */
-const CACHE_NAME = "pesoplan-shell-v11-instruction-image-slots";
+const CACHE_NAME = "pesoplan-shell-v14-index-owned-theme";
 const APP_SHELL = [
   new URL("./", self.registration.scope).href,
   new URL("./index.html", self.registration.scope).href,
+  new URL("./schedules.html", self.registration.scope).href,
   new URL("./manifest.webmanifest", self.registration.scope).href,
   new URL("./supabase-config.js", self.registration.scope).href,
   new URL("./logos/1.png", self.registration.scope).href,
@@ -57,11 +58,12 @@ self.addEventListener("fetch", event => {
         const response = await fetch(request);
         if (response && response.ok) {
           const cache = await caches.open(CACHE_NAME);
-          await cache.put(new URL("./index.html", self.registration.scope).href, response.clone());
+          await cache.put(new URL(request.url).href, response.clone());
         }
         return response;
       } catch (error) {
-        return (await caches.match(new URL("./index.html", self.registration.scope).href)) ||
+        return (await caches.match(request.url)) ||
+          (await caches.match(new URL("./index.html", self.registration.scope).href)) ||
           (await caches.match(new URL("./", self.registration.scope).href)) ||
           new Response("EUnify is not available offline yet. Open it once while connected to the internet.", {
             status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" }
