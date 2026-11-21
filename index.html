@@ -1253,6 +1253,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
           </div>
           <div id="wishCategoryTabs" class="wish-category-tabs no-print" aria-label="Filter wishlist by category"></div>
           <div class="priority-list" id="wishList"></div>
+          <div class="wish-collection" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+            <button class="btn btn-quiet btn-block" type="button" id="wishCompletedToggle" aria-expanded="false">♡ My completed wishlist <span id="wishCompletedCount">(0)</span>　⌄</button>
+            <div id="wishCompletedPanel" hidden style="margin-top:12px"><div id="wishCompletedCategoryTabs" class="wish-category-tabs no-print" aria-label="Filter completed wishlist by category"></div><div class="priority-list" id="wishCompletedList"></div></div>
+          </div>
         </div>
       </div>
     </section>
@@ -1540,6 +1544,7 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
   const blankBalances = () => Object.fromEntries(CATEGORIES.map(c => [c.id, 0]));
   let state = load();
   let selectedWishCategory = 'all';
+  let selectedCompletedWishCategory = 'all';
   let expandedBillId = null;
   let activeReminderGroupId = null;
   let expandedPaidBillName = null;
@@ -2708,34 +2713,35 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
 
   function renderWishes() {
     const list = document.getElementById('wishList');
+    const completedList = document.getElementById('wishCompletedList');
+    const completedToggle = document.getElementById('wishCompletedToggle');
     const tabs = document.getElementById('wishCategoryTabs');
-    const sorted = [...state.wishes].sort((a,b) => Number(a.done)-Number(b.done) || ({High:0,Medium:1,Low:2}[a.priority] - {High:0,Medium:1,Low:2}[b.priority]));
-    const counts = Object.fromEntries(CATEGORIES.map(c => [c.id, state.wishes.filter(w => w.category === c.id).length]));
+    const active = state.wishes.filter(w => !w.done);
+    const completed = state.wishes.filter(w => w.done);
+    const sortWishes = items => [...items].sort((a,b) => ({High:0,Medium:1,Low:2}[a.priority] - {High:0,Medium:1,Low:2}[b.priority]));
+    const counts = Object.fromEntries(CATEGORIES.map(c => [c.id, active.filter(w => w.category === c.id).length]));
     const populatedCategories = CATEGORIES.filter(c => counts[c.id] > 0);
-    // If the selected category becomes empty, return to All instead of leaving a hidden category selected.
-    if (selectedWishCategory !== 'all' && !populatedCategories.some(c => c.id === selectedWishCategory)) {
-      selectedWishCategory = 'all';
-    }
-    tabs.innerHTML = (state.wishes.length
-      ? `<button type="button" data-wish-filter="all" class="${selectedWishCategory==='all'?'active':''}">All (${state.wishes.length})</button>`
-      : '') + populatedCategories.map(c =>
-        `<button type="button" data-wish-filter="${c.id}" class="${selectedWishCategory===c.id?'active':''}">${c.icon} ${escapeHTML(c.name)} (${counts[c.id]})</button>`
-      ).join('');
+    if (selectedWishCategory !== 'all' && !populatedCategories.some(c => c.id === selectedWishCategory)) selectedWishCategory = 'all';
+    tabs.innerHTML = (active.length ? `<button type="button" data-wish-filter="all" class="${selectedWishCategory==='all'?'active':''}">All (${active.length})</button>` : '') + populatedCategories.map(c =>
+      `<button type="button" data-wish-filter="${c.id}" class="${selectedWishCategory===c.id?'active':''}">${c.icon} ${escapeHTML(c.name)} (${counts[c.id]})</button>`).join('');
+    const completedTabs = document.getElementById('wishCompletedCategoryTabs');
+    const completedCounts = Object.fromEntries(CATEGORIES.map(c => [c.id, completed.filter(w => w.category === c.id).length]));
+    const completedCategories = CATEGORIES.filter(c => completedCounts[c.id] > 0);
+    if (selectedCompletedWishCategory !== 'all' && !completedCategories.some(c => c.id === selectedCompletedWishCategory)) selectedCompletedWishCategory = 'all';
+    completedTabs.innerHTML = (completed.length ? `<button type="button" data-completed-wish-filter="all" class="${selectedCompletedWishCategory==='all'?'active':''}">All (${completed.length})</button>` : '') + completedCategories.map(c =>
+      `<button type="button" data-completed-wish-filter="${c.id}" class="${selectedCompletedWishCategory===c.id?'active':''}">${c.icon} ${escapeHTML(c.name)} (${completedCounts[c.id]})</button>`).join('');
     const managing = !document.getElementById('wishManageArea')?.hidden;
-    const visible = selectedWishCategory === 'all' ? sorted : sorted.filter(w => w.category === selectedWishCategory);
-    if (!visible.length) {
-      list.innerHTML = selectedWishCategory === 'all'
-        ? '<div class="empty">Your shopping list is empty. Open Edit list to add something you are planning to buy.</div>'
-        : '<div class="empty">No items in this category yet. Add something you are planning to buy.</div>';
-      return;
-    }
-    const groups = selectedWishCategory === 'all' ? populatedCategories : [category(selectedWishCategory)].filter(c => c && counts[c.id] > 0);
-    list.innerHTML = groups.map(c => {
-      const items = visible.filter(w => w.category === c.id);
-      return `<div class="wish-group"><div class="wish-group-title">${c.icon} ${escapeHTML(c.name)} <span>${items.length} item${items.length===1?'':'s'}</span></div>` +
-        items.map(w => `<div class="priority-item ${w.done?'done':''}"><input class="priority-check no-print" type="checkbox" aria-label="Mark ${escapeHTML(w.name)} as purchased" data-wish-check="${w.id}" ${w.done?'checked':''}><div class="buy-info"><div class="buy-name">${escapeHTML(w.name)}</div><div class="buy-meta">${w.done ? 'Purchased' : 'To buy'}${managing ? ` · ${w.priority} priority` : ''}</div></div><span class="buy-price">${peso(w.amount)}</span>
-${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit wishlist estimation" aria-label="Edit ${escapeHTML(w.name)} estimation" data-edit-wish="${w.id}"><span aria-hidden="true">✎</span><span>Edit</span></button><button class="icon-btn no-print" type="button" title="Remove item" aria-label="Remove ${escapeHTML(w.name)}" data-delete-wish="${w.id}">✕</button>` : ''}</div>`).join('') + '</div>';
+    const visible = selectedWishCategory === 'all' ? sortWishes(active) : sortWishes(active.filter(w => w.category === selectedWishCategory));
+    const renderGroups = items => CATEGORIES.filter(c => items.some(w => w.category === c.id)).map(c => {
+      const groupItems = items.filter(w => w.category === c.id);
+      return `<div class="wish-group"><div class="wish-group-title">${c.icon} ${escapeHTML(c.name)} <span>${groupItems.length} item${groupItems.length===1?'':'s'}</span></div>` +
+        groupItems.map(w => `<div class="priority-item ${w.done?'done':''}"><input class="priority-check no-print" type="checkbox" aria-label="${w.done?'Unmark':'Mark'} ${escapeHTML(w.name)} ${w.done?'as not purchased':'as purchased'}" data-wish-check="${w.id}" ${w.done?'checked':''}><div class="buy-info"><div class="buy-name">${escapeHTML(w.name)}</div><div class="buy-meta">${w.done ? 'Purchased' : 'To buy'}${managing ? ` · ${w.priority} priority` : ''}</div></div><span class="buy-price">${peso(w.amount)}</span>${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit wishlist estimation" aria-label="Edit ${escapeHTML(w.name)} estimation" data-edit-wish="${w.id}"><span aria-hidden="true">✎</span><span>Edit</span></button><button class="icon-btn no-print" type="button" title="Remove item" aria-label="Remove ${escapeHTML(w.name)}" data-delete-wish="${w.id}">✕</button>` : ''}</div>`).join('') + '</div>';
     }).join('');
+    list.innerHTML = visible.length ? renderGroups(visible) : '<div class="empty">Your active Wishlist is empty. Completed items are kept in My completed wishlist.</div>';
+    document.getElementById('wishCompletedCount').textContent = `(${completed.length})`;
+    completedToggle.hidden = completed.length === 0;
+    const visibleCompleted = selectedCompletedWishCategory === 'all' ? completed : completed.filter(w => w.category === selectedCompletedWishCategory);
+    completedList.innerHTML = visibleCompleted.length ? renderGroups(sortWishes(visibleCompleted)) : '<div class="empty">No completed wishlist items in this category.</div>';
   }
   function escapeHTML(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function addTransaction(t) { state.transactions.push(t); save(); render(); }
@@ -3241,6 +3247,7 @@ ${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit w
   document.getElementById('billType')?.addEventListener('change',syncReminderCategoryVisibility);
   syncReminderCategoryVisibility();
   renderSectionDisplaySettings();document.getElementById('sectionDisplayRows')?.addEventListener('change',e=>{const el=e.target.closest('[data-section-display]');if(!el)return;state.sectionDisplay=state.sectionDisplay||{};state.sectionDisplay[el.dataset.sectionDisplay]=el.value;state.sectionDisplayUpdatedAt=Date.now();save();applySectionDisplaySettings();});
+  document.getElementById('wishCompletedToggle')?.addEventListener('click',()=>{const panel=document.getElementById('wishCompletedPanel');panel.hidden=!panel.hidden;document.getElementById('wishCompletedToggle').setAttribute('aria-expanded',String(!panel.hidden));});
   document.getElementById('wishManageToggle')?.addEventListener('click',()=>{const area=document.getElementById('wishManageArea');area.hidden=!area.hidden;const btn=document.getElementById('wishManageToggle');btn.setAttribute('aria-expanded',String(!area.hidden));btn.textContent=area.hidden?'⚙ Edit list':'✓ Done editing';renderWishes();});
   applySectionDisplaySettings();
   initializeThemeSettings();
@@ -3319,6 +3326,13 @@ ${managing ? `<button class="wish-edit-btn no-print" type="button" title="Edit w
     const button = e.target.closest('[data-wish-filter]');
     if (!button) return;
     selectedWishCategory = button.dataset.wishFilter;
+    renderWishes();
+  });
+
+  document.getElementById('wishCompletedCategoryTabs')?.addEventListener('click', e => {
+    const button = e.target.closest('[data-completed-wish-filter]');
+    if (!button) return;
+    selectedCompletedWishCategory = button.dataset.completedWishFilter;
     renderWishes();
   });
 
