@@ -2151,7 +2151,13 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       return;
     }
     cloudModalStatus.textContent = 'Creating your account…';
-    const { data, error } = await cloudClient.auth.signUp({ email, password });
+    const { data, error } = await cloudClient.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: 'https://digitized-droid.github.io/ExpenseUtility/'
+  }
+});
     if (error) cloudModalStatus.textContent = error.message;
     else if (data.session) {
       cloudModalStatus.textContent = 'Account created. Connecting…';
