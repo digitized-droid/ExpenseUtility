@@ -822,6 +822,89 @@ td strong { font-size:11px; }
 }
 
 
+/* Match My completed wishlist to the compact initial wishlist rows */
+#wishCompletedList.priority-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+#wishCompletedList .wish-group {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#wishCompletedList .wish-group + .wish-group {
+  margin-top: 12px !important;
+}
+#wishCompletedList .wish-group-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin: 0 0 3px !important;
+  padding: 0 2px 4px !important;
+}
+#wishCompletedList .priority-item,
+#wishCompletedList .priority-item.done {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 6px 4px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#wishCompletedList .priority-item:last-child {
+  border-bottom: 0 !important;
+}
+#wishCompletedList .priority-item.done {
+  opacity: .55 !important;
+}
+#wishCompletedList .priority-check {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 2px 0 0 !important;
+  flex: 0 0 16px !important;
+}
+#wishCompletedList .buy-info {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+#wishCompletedList .buy-name {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+#wishCompletedList .buy-meta {
+  margin-top: 1px !important;
+  font-size: 10px !important;
+}
+#wishCompletedList .buy-price {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  padding-left: 8px !important;
+  font-size: 12px !important;
+}
+#wishCompletedList .wish-edit-btn,
+#wishCompletedList .icon-btn {
+  flex: 0 0 auto !important;
+}
+@media (max-width: 520px) {
+  #wishCompletedList .priority-item {
+    flex-wrap: nowrap !important;
+    padding: 7px 2px !important;
+  }
+  #wishCompletedList .buy-info {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+  #wishCompletedList .buy-price {
+    margin-left: auto !important;
+    padding-left: 5px !important;
+  }
+}
+
 /* Category expansion and direct balance transfers */
 .category-card { cursor:pointer; transition:transform .18s ease, box-shadow .18s ease; }
 .category-card:focus-visible { outline:3px solid var(--site-secondary); outline-offset:3px; }
