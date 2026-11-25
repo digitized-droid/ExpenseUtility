@@ -93,7 +93,7 @@
       const todayKey=localDate(new Date());let firstIndex=0;
       while(firstIndex<100000&&taskCycleAtIndex(task,firstIndex,cfg).end<todayKey)firstIndex++;
       for(let i=firstIndex;i<firstIndex+400;i++){
-        const cycle=taskCycleAtIndex(task,i,cfg);if((task.occurrences||{})[cycle.key]==='done')continue;
+        const cycle=taskCycleAtIndex(task,i,cfg);if(task.untilDate&&cycle.start>task.untilDate)break;if((task.occurrences||{})[cycle.key]==='done')continue;
         const dueAt=dueDate(cycle.start,task.time||'09:00');if(!dueAt)continue;
         if(prefs.notify24h!==false)add('task',task.id,task.title||'Your task',dueAt,DAY,'24-hour task reminder',cycle.key);
         if(prefs.notify12h!==false)add('task',task.id,task.title||'Your task',dueAt,12*60*60*1000,'12-hour task reminder',cycle.key);
