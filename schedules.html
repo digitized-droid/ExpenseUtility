@@ -974,7 +974,7 @@ function render(){
  };
  $('overdueList').innerHTML=overdue.length?`<h3 class="sched-section-title">Overdue tasks</h3>${overdue.map(itemHtml).join('')}`:'';
  const mainTasks=[...normal,...recurring];
- $('scheduleList').innerHTML=mainTasks.length?`${normal.length?'<h3 class="sched-section-title">One-time to-do lists</h3>':''}${normal.map(itemHtml).join('')}${recurring.length?'<h3 class="sched-section-title">Repeating to-do lists</h3>':''}${recurring.map(itemHtml).join('')}`:(overdue.length?'':'<p class="empty">No to-do activities for this day.</p>');
+ $('scheduleList').innerHTML=mainTasks.length?`${normal.length?'<h3 class="sched-section-title">One-time to-do lists</h3>':''}${normal.map(itemHtml).join('')}${recurring.length?'<br><h3 class="sched-section-title">Repeating to-do lists</h3>':''}${recurring.map(itemHtml).join('')}`:(overdue.length?'':'<p class="empty">No to-do activities for this day.</p>');
  if(!dayView&&!mainTasks.length&&!overdue.length)$('scheduleList').innerHTML='<p class="empty">No unfinished to-do activities through this month.</p>';
  renderCalendar();renderBills();
 }
