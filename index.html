@@ -2991,13 +2991,35 @@ Whenever you're ready, select <strong>Got it</strong> to start exploring.</p>
       const items = visible.filter(t => t.category === c.id);
       const totalAmount = items.reduce((sum,t) => sum + Number(t.amount || 0), 0);
       const expanded = expandedPaidBillName === c.id;
-      // Within each category, combine repeated expenses under one recognizable name.
-      const grouped = new Map();
+      // Group names within this category when one is the complete-word prefix of another.
+      // Example: "Hotdog" and "Hotdog with Rice" share one history group, while
+      // unrelated names (such as "Hotdog" and "Hotdog Bun") remain separate.
+      const nameGroups = [];
+      const normalized = name => String(name || '').toLocaleLowerCase()
+        .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+      const distinctNames = new Map();
       items.forEach(t => {
-        const name = paidExpenseLabel(t), normalizedName = String(name).trim().toLocaleLowerCase();
-        if (!grouped.has(normalizedName)) grouped.set(normalizedName, {label:name, records:[]});
-        grouped.get(normalizedName).records.push(t);
+        const name = paidExpenseLabel(t);
+        const key = normalized(name);
+        if (!distinctNames.has(key)) distinctNames.set(key, {label:name, records:[]});
+        distinctNames.get(key).records.push(t);
       });
+      [...distinctNames.entries()]
+        .sort((a,b) => a[0].split(' ').length - b[0].split(' ').length || a[0].length - b[0].length)
+        .forEach(([key, entry]) => {
+          const words = key.split(' ').filter(Boolean);
+          let group = nameGroups.find(g => {
+            const baseWords = g.key.split(' ').filter(Boolean);
+            return baseWords.length <= words.length && baseWords.every((word,i) => word === words[i]);
+          });
+          if (!group) {
+            group = {key, label:entry.label, records:[]};
+            nameGroups.push(group);
+          }
+          group.records.push(...entry.records);
+        });
+      const grouped = new Map(nameGroups.map(g => [g.key, g]));
       const history = grouped.size
         ? [...grouped.values()].map(({label:name, records}) => {
             const groupTotal = records.reduce((sum,t) => sum + Number(t.amount || 0), 0);
